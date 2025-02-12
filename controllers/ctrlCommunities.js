@@ -1,0 +1,146 @@
+const { Comunidad } = require("../models/index");
+const logger = require("../utils/logger");
+
+const createCommunity = async (req, res) => {
+    try {
+        const { nombre, jefa, contacto, direccion, idRuta } = req.body;
+
+        // Validate required fields
+        if (!nombre || !idRuta ) 
+            return sendErrorResponse(res, 400, "Missing or invalid fields");
+
+        // Create the order
+        const community = await Comunidad.create({
+            nombre,
+            jefa,
+            contacto,
+            direccion,
+            idRuta
+        });
+
+        // Return the created order
+        logger.info(`Comunidad successfully registered: ${community.dataValues.id}`);
+        return sendSuccessResponse(res, 201, community);
+    } catch (e) {
+        logger.error(`Error creating comunidad: ${e.message}`);
+        return sendErrorResponse(res, 500, "Internal server error");
+    }
+}
+
+const getAllCommunities = async (req, res) => {
+    try {
+        const { page = 1, limit = 10 } = req.query; // Pagination parameters
+        const offset = (page - 1) * limit;
+
+        const community = await Comunidad.findAll({
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+        });
+
+        logger.info(`Fetched ${community.length} community`); // Log success
+        return sendSuccessResponse(res, 200, community);
+    } catch (e) {
+        logger.error(`Error fetching all community: ${e.message}`); // Log error
+        return sendErrorResponse(res, 500, "Internal server error");
+    }
+}
+
+const getCommunity = async (req, res) => {
+    try {
+        const id = req.params.id;
+
+        // Validate ID
+        if (isNaN(id)) {
+            logger.warn(`Invalid ID provided: ${id}`); // Log warning
+            return sendErrorResponse(res, 400, "Invalid ID");
+        }
+
+        const community = await Comunidad.findByPk(id);
+
+        if (!community) {
+            logger.warn(`Community not found with ID: ${id}`); // Log warning
+            return sendErrorResponse(res, 404, "Community not found");
+        }
+
+        logger.info(`Community fetched successfully: ${id}`); // Log success
+        return sendSuccessResponse(res, 200, community.dataValues);
+    } catch (e) {
+        logger.error(`Error fetching community: ${e.message}`); // Log error
+        return sendErrorResponse(res, 500, "Internal server error");
+    }
+}
+
+const updateCommunity = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const updates = req.body;
+
+        // Validate ID
+        if (isNaN(id)) {
+            logger.warn(`Invalid ID provided: ${id}`); // Log warning
+            return sendErrorResponse(res, 400, "Invalid ID");
+        }
+
+        // Check if community exists
+        const community = await Comunidad.findByPk(id);
+        if (!community) {
+            logger.warn(`Community not found with ID: ${id}`); // Log warning
+            return sendErrorResponse(res, 404, "Community not found");
+        }
+
+        // Update community
+        const [result] = await Comunidad.update(updates, { where: { id } });
+
+        if (result !== 1) {
+            logger.error(`Failed to update community with ID: ${id}`); // Log error
+            return sendErrorResponse(res, 500, "Failed to update community");
+        }
+
+        logger.info(`Community updated successfully: ${id}`); // Log success
+        return sendSuccessResponse(res, 200, { message: "Community updated" });
+    } catch (e) {
+        logger.error(`Error updating community: ${e.message}`); // Log error
+        return sendErrorResponse(res, 500, "Internal server error");
+    }
+}
+
+const deleteCommunity = async (req, res) => {
+    try {
+        const id = req.params.id;
+
+        // Validate ID
+        if (isNaN(id)) {
+            logger.warn(`Invalid ID provided: ${id}`); // Log warning
+            return sendErrorResponse(res, 400, "Invalid ID");
+        }
+
+        // Check if community exists
+        const community = await Comunidad.findByPk(id);
+        if (!community) {
+            logger.warn(`Community not found with ID: ${id}`); // Log warning
+            return sendErrorResponse(res, 404, "Community not found");
+        }
+
+        // Delete community
+        const result = await Comunidad.destroy({ where: { id } });
+
+        if (result !== 1) {
+            logger.error(`Failed to delete community with ID: ${id}`); // Log error
+            return sendErrorResponse(res, 500, "Failed to delete community");
+        }
+
+        logger.info(`Community deleted successfully: ${id}`); // Log success
+        return res.status(204).end(); // No content for successful deletion
+    } catch (e) {
+        logger.error(`Error deleting community: ${e.message}`); // Log error
+        return sendErrorResponse(res, 500, "Internal server error");
+    }
+}
+
+module.exports= {
+    createCommunity,
+    getAllCommunities,
+    getCommunity,
+    updateCommunity,
+    deleteCommunity
+}
