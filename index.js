@@ -1,0 +1,30 @@
+const express = require("express");
+const cors = require("cors");
+
+let app = express();
+
+//Para que acepte JSON, formularios HTML y el CORS
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(cors());
+
+// Routes
+app.use("/auth", require("./routes/authentication"));
+app.use("/usuarios", require("./routes/users"));
+app.use("/pedidos", require("./routes/orders"));
+app.use("/comunidades", require("./routes/communities"));
+app.use("/rutas", require("./routes/routes"));
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ message: "Something went wrong!" });
+});
+
+// Start server
+const PORT = process.env.PORT || 3000;
+const server = app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
+
+module.exports = { app, server };
