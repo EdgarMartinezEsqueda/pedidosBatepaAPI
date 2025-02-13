@@ -1,0 +1,15 @@
+const { Router } = require("express");
+const router = Router();
+const controllerUsuarios = require("../controllers/ctrlUsers");
+const verify = require("../middleware/verifyToken");
+
+// All endpoints for user actions
+router
+    .get("/", verify.verifyTokenAndAdmin, controllerUsuarios.getAllUsers )
+    .get("/:id", verify.verifyTokenAndAdmin, controllerUsuarios.getUser )
+    .patch("/:id", verify.verifyTokenAndAuthorization, controllerUsuarios.updateUser )
+    .delete("/:id", verify.verifyTokenAndAdmin, controllerUsuarios.deleteUser )
+    .patch("/:id/verificar", verify.verifyTokenAndAdmin, controllerUsuarios.verifyUser )
+    .get("/todos/pendientes", verify.verifyTokenAndAdmin, controllerUsuarios.getPendingUsers);
+
+module.exports = router;
