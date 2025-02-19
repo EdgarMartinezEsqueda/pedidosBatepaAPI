@@ -3,15 +3,16 @@ const logger = require("../utils/logger");
 
 const createCommunity = async (req, res) => {
     try {
-        const { nombre, jefa, contacto, direccion, idRuta } = req.body;
+        const { nombre, jefa, contacto, direccion, idRuta, municipio } = req.body;
 
         // Validate required fields
-        if (!nombre || !idRuta ) 
+        if (!nombre || !idRuta || !municipio) 
             return sendErrorResponse(res, 400, "Missing or invalid fields");
 
         // Create the order
         const community = await Comunidad.create({
             nombre,
+            municipio,
             jefa,
             contacto,
             direccion,
@@ -41,6 +42,22 @@ const getAllCommunities = async (req, res) => {
         return sendSuccessResponse(res, 200, community);
     } catch (e) {
         logger.error(`Error fetching all community: ${e.message}`); // Log error
+        return sendErrorResponse(res, 500, "Internal server error");
+    }
+}
+
+const getCommunitiesByCity = async (req, res) => {
+    try {
+        const municipio = req.params.municipio;
+
+        const communities = await Comunidad.findAll({
+            where: { municipio }
+        });
+
+        logger.info(`Fetched ${communities.length} communities`); // Log success
+        return sendSuccessResponse(res, 200, communities);
+    } catch (e) {
+        logger.error(`Error fetching all communities for City: ${municipio}\n${e.message}`); // Log error
         return sendErrorResponse(res, 500, "Internal server error");
     }
 }
@@ -141,6 +158,7 @@ module.exports= {
     createCommunity,
     getAllCommunities,
     getCommunity,
+    getCommunitiesByCity,
     updateCommunity,
     deleteCommunity
 }
