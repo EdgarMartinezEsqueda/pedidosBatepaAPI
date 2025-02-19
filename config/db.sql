@@ -19,6 +19,7 @@ CREATE TABLE rutas (
 CREATE TABLE comunidades (
     id INT PRIMARY KEY AUTO_INCREMENT,
     nombre TEXT NOT NULL,
+    municipio TEXT NOT NULL,
     jefa TEXT,
     contacto TEXT,
     direccion TEXT,
