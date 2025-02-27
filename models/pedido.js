@@ -8,7 +8,6 @@ const Pedido = sequelize.define("pedidos", {
     idRuta: { type: DataTypes.INTEGER, references: { model: "Rutas", key: "id" } },
     fechaEntrega: DataTypes.DATEONLY,
     estado: { type: DataTypes.ENUM ("pendiente", "creado", "finalizado"), defaultValue: "creado" },
-    observaciones: DataTypes.TEXT,
     devoluciones: DataTypes.INTEGER,
 });
 
