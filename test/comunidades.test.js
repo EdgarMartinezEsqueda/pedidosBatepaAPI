@@ -4,148 +4,152 @@ const { app, server } = require("../index");
 
 const api = supertest(app);
 
-let adminToken = "", testRouteID = "";
+let adminToken = "", testRouteID = "", testCommunityID = "";
+const testMunicipio = "Ciudad de Prueba";
 
-// Log in as admin to get a token
 beforeAll(async () => {
-    const response = await api.post("/auth/login").send({
+    // Login como admin
+    const loginResponse = await api.post("/auth/login").send({
         email: "test@example.com",
         password: "password123",
     });
+    adminToken = loginResponse.body.data.accessToken;
 
-    adminToken = response.body.data.accessToken;
+    // Crear ruta de prueba
+    const routeResponse = await api
+        .post("/rutas")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ nombre: "Ruta para Comunidades" });
+    testRouteID = routeResponse.body.data.id;
 });
 
-describe("Rutas", () => {
-    // Test creating a new route
-    it("should create a new route", async () => {
+describe("Comunidades", () => {
+    // Crear comunidad
+    it("debería crear una nueva comunidad", async () => {
         const response = await api
-            .post("/rutas")
+            .post("/comunidades")
             .set("Authorization", `Bearer ${adminToken}`)
             .send({
-                nombre: "Test Route",
+                nombre: "Comunidad de Prueba",
+                idRuta: testRouteID,
+                municipio: testMunicipio,
+                jefa: "Líder de Prueba",
+                contacto: "contacto@test.com",
+                direccion: "Dirección de Prueba"
             });
 
-        testRouteID = response.body.data.id; // Save the route ID for later tests
+        testCommunityID = response.body.data.id;
 
         expect(response.statusCode).toBe(201);
         expect(response.body.data).toHaveProperty("id");
-        expect(response.body.data.nombre).toBe("Test Route");
     });
 
-    // Test creating a route with missing fields
-    it("should fail to create a route with missing fields", async () => {
-        const response = await api
-            .post("/rutas")
-            .set("Authorization", `Bearer ${adminToken}`)
-            .send({});
+    // Validación de campos requeridos
+    it("debería fallar si faltan campos requeridos", async () => {
+        const tests = [
+            { nombre: "Falta idRuta", municipio: testMunicipio },
+            { idRuta: testRouteID, municipio: testMunicipio },
+            { nombre: "Falta municipio", idRuta: testRouteID }
+        ];
 
-        expect(response.statusCode).toBe(400);
-        expect(response.body.error.message).toBe("Missing or invalid fields");
-    });
-
-    // Test fetching all routes
-    it("should fetch all routes", async () => {
-        const response = await api
-            .get("/rutas")
-            .set("Authorization", `Bearer ${adminToken}`);
+        for (const body of tests) {
+            const response = await api
+                .post("/comunidades")
+                .set("Authorization", `Bearer ${adminToken}`)
+                .send(body);
             
-        expect(response.statusCode).toBe(200);
-        expect(Array.isArray(response.body.data)).toBe(true);
+            expect(response.statusCode).toBe(400);
+        }
     });
 
-    // Test fetching a specific route
-    it("should fetch a specific route", async () => {
+    // Obtener todas las comunidades
+    it("debería obtener todas las comunidades paginadas", async () => {
         const response = await api
-            .get(`/rutas/${testRouteID}`)
+            .get("/comunidades?page=1&limit=10")
             .set("Authorization", `Bearer ${adminToken}`);
 
         expect(response.statusCode).toBe(200);
-        expect(response.body.data.id).toBe(testRouteID);
-        expect(response.body.data.nombre).toBe("Test Route");
+        expect(response.body.data).toBeInstanceOf(Array);
     });
 
-    // Test fetching a non-existent route
-    it("should fail to fetch a non-existent route", async () => {
+    // Obtener comunidades por ciudad
+    it("debería obtener comunidades por municipio", async () => {
         const response = await api
-            .get("/rutas/999999")
+            .get(`/comunidades/ciudad/${testMunicipio}`)
             .set("Authorization", `Bearer ${adminToken}`);
-
-        expect(response.statusCode).toBe(404);
-        expect(response.body.error.message).toBe("Route not found");
-    });
-
-    // Test updating a route
-    it("should update a route", async () => {
-        const response = await api
-            .patch(`/rutas/${testRouteID}`)
-            .set("Authorization", `Bearer ${adminToken}`)
-            .send({
-                nombre: "Updated Route Name",
-            });
 
         expect(response.statusCode).toBe(200);
-        expect(response.body.data.message).toBe("Route updated");
+        expect(response.body.data.some(c => c.municipio === testMunicipio)).toBe(true);
     });
 
-    // Test updating a route with invalid ID
-    it("should fail to update a route with invalid ID", async () => {
+    // Obtener una comunidad específica
+    it("debería obtener una comunidad por ID", async () => {
         const response = await api
-            .patch("/rutas/invalid")
+            .get(`/comunidades/${testCommunityID}`)
+            .set("Authorization", `Bearer ${adminToken}`);
+
+        expect(response.statusCode).toBe(200);
+        expect(response.body.data.id).toBe(testCommunityID);
+    });
+
+    // Actualizar una comunidad
+    it("debería actualizar una comunidad", async () => {
+        const response = await api
+            .patch(`/comunidades/${testCommunityID}`)
             .set("Authorization", `Bearer ${adminToken}`)
-            .send({
-                nombre: "Updated Route Name",
-            });
+            .send({ nombre: "Nombre Actualizado" });
 
-        expect(response.statusCode).toBe(400);
-        expect(response.body.error.message).toBe("Invalid ID");
+        expect(response.statusCode).toBe(200);
     });
 
-    // Test updating a non-existent route
-    it("should fail to update a non-existent route", async () => {
+    // Eliminar una comunidad
+    it("debería eliminar una comunidad", async () => {
         const response = await api
-            .patch("/rutas/999999")
-            .set("Authorization", `Bearer ${adminToken}`)
-            .send({
-                nombre: "Updated Route Name",
-            });
-
-        expect(response.statusCode).toBe(404);
-        expect(response.body.error.message).toBe("Route not found");
-    });
-
-    // Test deleting a route
-    it("should delete a route", async () => {
-        const response = await api
-            .delete(`/rutas/${testRouteID}`)
+            .delete(`/comunidades/${testCommunityID}`)
             .set("Authorization", `Bearer ${adminToken}`);
 
-        expect(response.statusCode).toBe(204);
+      expect(response.statusCode).toBe(204);
     });
 
-    // Test deleting a non-existent route
-    it("should fail to delete a non-existent route", async () => {
-        const response = await api
-            .delete("/rutas/999999")
+    describe("Manejo de errores", () => {
+        it("debería fallar con ID inválido", async () => {
+            // const tests = [
+            //     api.get("/comunidades/invalid"),
+            //     api.patch("/comunidades/invalid"),
+            //     api.delete("/comunidades/invalid")
+            // ];
+
+            // for (const test of tests) {
+            //     const response = await test.set("Authorization", `Bearer ${adminToken}`).send();
+            //     expect(response.statusCode).toBe(400);
+            // }
+            const response = await api
+            .get(`/comunidades/invalid`)
             .set("Authorization", `Bearer ${adminToken}`);
 
-        expect(response.statusCode).toBe(404);
-        expect(response.body.error.message).toBe("Route not found");
-    });
+            expect(response.statusCode).toBe(400);
+        });
 
-    // Test deleting a route with invalid ID
-    it("should fail to delete a route with invalid ID", async () => {
-        const response = await api
-            .delete("/rutas/invalid")
+        it("debería fallar con ID inexistente", async () => {
+            // const tests = [
+            //     api.get("/comunidades/999999"),
+            //     api.patch("/comunidades/999999"),
+            //     api.delete("/comunidades/999999")
+            // ];
+            // for (const test of tests) {
+            //     const response = await test.set("Authorization", `Bearer ${adminToken}`).send();
+            //     expect(response.statusCode).toBe(404);
+            // }
+            const response = await api
+            .get(`/comunidades/999999`)
             .set("Authorization", `Bearer ${adminToken}`);
 
-        expect(response.statusCode).toBe(400);
-        expect(response.body.error.message).toBe("Invalid ID");
+            expect(response.statusCode).toBe(404);
+        });
     });
 });
 
-// Clean up the database after all tests
 afterAll(async () => {
-    await sequelize.close();
-    server.close();
+    await new Promise((resolve) => server.close(resolve)); // Primero cierra el servidor
+    await sequelize.close(); // Luego la DB
 });
