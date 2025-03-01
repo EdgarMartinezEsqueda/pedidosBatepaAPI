@@ -1,6 +1,23 @@
 const { Comunidad } = require("../models/index");
 const logger = require("../utils/logger");
 
+// Utility functions for responses
+const sendErrorResponse = (res, statusCode, message) => {
+    return res.status(statusCode).json({
+        status: "error",
+        error: { code: statusCode, message },
+        meta: { request_time: new Date().toLocaleString() },
+    });
+};
+
+const sendSuccessResponse = (res, statusCode, data) => {
+    return res.status(statusCode).json({
+        status: "success",
+        data,
+        meta: { request_time: new Date().toLocaleString() },
+    });
+};
+
 const createCommunity = async (req, res) => {
     try {
         const { nombre, jefa, contacto, direccion, idRuta, municipio } = req.body;
@@ -49,11 +66,9 @@ const getAllCommunities = async (req, res) => {
 const getCommunitiesByCity = async (req, res) => {
     try {
         const municipio = req.params.municipio;
-
         const communities = await Comunidad.findAll({
             where: { municipio }
         });
-
         logger.info(`Fetched ${communities.length} communities`); // Log success
         return sendSuccessResponse(res, 200, communities);
     } catch (e) {
