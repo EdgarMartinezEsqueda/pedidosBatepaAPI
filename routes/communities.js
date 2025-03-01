@@ -9,6 +9,7 @@ router
     .get("/", verify.verifyToken, ctrlCommunities.getAllCommunities)
     .get("/:id", verify.verifyTokenAndAuthorization, ctrlCommunities.getCommunity)
     .patch("/:id", verify.verifyTokenAndAdmin, ctrlCommunities.updateCommunity)
-    .delete("/:id", verify.verifyTokenAndAdmin, ctrlCommunities.deleteCommunity);
+    .delete("/:id", verify.verifyTokenAndAdmin, ctrlCommunities.deleteCommunity)
+    .get("/ciudad/:municipio", verify.verifyToken, ctrlCommunities.getCommunitiesByCity);
 
 module.exports = router;
