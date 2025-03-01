@@ -45,6 +45,7 @@ const createOrder = async (req, res) => {
                 despensasSinCosto: comunidad.despensasSinCosto,
                 despensasApadrinadas: comunidad.despensasApadrinadas,
                 arpilladas: comunidad.arpilladas,
+                observaciones: comunidad.observaciones
             });
         }
 
