@@ -80,17 +80,35 @@ const loginUsers = async (req, res) => {
         const { password: _, ...userData } = user.dataValues;
 
         // Generate JWT token
-        const accessToken = jwt.sign( { id: user.id, rol: user.rol || "Almacen" }, process.env.FRASE_JWT );
+        const accessToken = jwt.sign( { id: user.id, rol: user.rol }, process.env.FRASE_JWT );
+
+    	// Configurar cookie HTTP-Only
+        res.cookie('jwt', accessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production', // Solo HTTPS en prod
+            sameSite: 'strict',
+            path: '/'
+        });
 
         logger.info(`User successfully logged in: ${user.id}`);
-        return sendSuccessResponse(res, 200, { ...userData, accessToken });
+        return sendSuccessResponse(res, 200, /*{ ...userData, accessToken }*/ userData );
     } catch (e) {
         console.error(e); // Log the error for debugging
         return sendErrorResponse(res, 500, "Internal server error");
     }
 };
 
+const logoutUser = (req, res) => {
+    res.clearCookie('jwt', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    });
+    return sendSuccessResponse(res, 200, { message: "Logout exitoso" });
+};
+
 module.exports = {
     registerUsers,
     loginUsers,
+    logoutUser
 };

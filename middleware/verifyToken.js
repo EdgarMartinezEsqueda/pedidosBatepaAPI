@@ -12,18 +12,11 @@ const sendErrorResponse = (res, statusCode, message) => {
 
 // Verify token
 const verifyToken = (req, res, next) => {
-    const authHeader = req.headers.token || req.headers.authorization;
+    const token = req.cookies.jwt;
 
-    if (!authHeader) {
+    if (!token) {
         return sendErrorResponse(res, 401, "No token provided");
     }
-
-    // Check if the token starts with "Bearer"
-    if (!authHeader.startsWith("Bearer ")) {
-        return sendErrorResponse(res, 401, "Invalid token format");
-    }
-
-    const token = authHeader.split(" ")[1];
 
     jwt.verify(token, process.env.FRASE_JWT, (err, user) => {
         if (err) {
