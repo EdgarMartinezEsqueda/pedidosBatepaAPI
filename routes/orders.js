@@ -5,7 +5,7 @@ const verify = require("../middleware/verifyToken");
 
 // Order endpoints
 router
-    .post("/", verify.verifyToken, ctrlPedidos.createOrder)
+    .post("/", verify.verifyTokenAndAuthorization, ctrlPedidos.createOrder)
     .get("/", verify.verifyToken, ctrlPedidos.getAllOrders)
     .get("/:id", verify.verifyToken, ctrlPedidos.getOrder)
     .patch("/:id", verify.verifyTokenAndAuthorization, ctrlPedidos.updateOrder)
