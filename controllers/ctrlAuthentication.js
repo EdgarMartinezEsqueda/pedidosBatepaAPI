@@ -98,6 +98,7 @@ const loginUsers = async (req, res) => {
     }
 };
 
+// logout user
 const logoutUser = (req, res) => {
     res.clearCookie('jwt', {
       httpOnly: true,
@@ -107,8 +108,25 @@ const logoutUser = (req, res) => {
     return sendSuccessResponse(res, 200, { message: "Logout exitoso" });
 };
 
+// Get current user
+const getCurrentUser = async (req, res) => {
+    try {
+        const user = await Usuario.findByPk(req.user.id, {
+        attributes: { exclude: ['password'] }
+    });
+      
+    if (!user) return sendErrorResponse(res, 404, "Usuario no encontrado");
+      
+    return sendSuccessResponse(res, 200, user);
+    } catch (e) {
+        console.error(e);
+        return sendErrorResponse(res, 500, "Error del servidor");
+    }
+  };
+
 module.exports = {
     registerUsers,
     loginUsers,
-    logoutUser
+    logoutUser,
+    getCurrentUser
 };

@@ -12,6 +12,9 @@ const sendErrorResponse = (res, statusCode, message) => {
 
 // Verify token
 const verifyToken = (req, res, next) => {
+    if (!req.cookies) {
+        return sendErrorResponse(res, 401, "No se encontraron cookies");
+    }
     const token = req.cookies.jwt;
 
     if (!token) {
