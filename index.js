@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-
+const cookieParser = require('cookie-parser')
 let app = express();
 
 //Para que acepte JSON, formularios HTML y el CORS
@@ -11,7 +11,7 @@ app.use(cors({
     origin: process.env.ORIGIN.split(','),
     credentials: true // Permitir cookies
 }));
-
+app.use(cookieParser());
 // Routes
 app.use("/auth", require("./routes/authentication"));
 app.use("/usuarios", require("./routes/users"));
