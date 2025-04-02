@@ -6,6 +6,7 @@ const Pedido = require("./pedido");
 const PedidoComunidad = require("./pedidoComunidad");
 const Ruta = require("./ruta");
 const Usuario = require("./usuario");
+const Municipio = require("./municipio");
 
 // Define relationships
 
@@ -24,6 +25,10 @@ Pedido.belongsTo(Ruta, { foreignKey: "idRuta" });
 // Pedido has many Comunidades through PedidoComunidad
 Pedido.belongsToMany(Comunidad, { through: PedidoComunidad, foreignKey: "idPedido" });
 Comunidad.belongsToMany(Pedido, { through: PedidoComunidad, foreignKey: "idComunidad" });
+
+// Comunidad belongs to Municipio and Municipio has many Comunidades
+Comunidad.belongsTo(Municipio, { foreignKey: "idMunicipio" });
+Municipio.hasMany(Comunidad, { foreignKey: "idMunicipio" });
 
 // Export models
 module.exports = {
