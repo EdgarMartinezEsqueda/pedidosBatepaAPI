@@ -127,13 +127,8 @@ const getUser = async (req, res) => {
 // Get all users
 const getAllUsers = async (req, res) => {
     try {
-        const { page = 1, limit = 10 } = req.query; // Pagination parameters
-        const offset = (page - 1) * limit;
-
         const users = await Usuario.findAll({
             attributes: { exclude: ["password"] }, // Exclude sensitive fields
-            limit: parseInt(limit),
-            offset: parseInt(offset),
         });
 
         logger.info(`Fetched ${users.length} users`); // Log success

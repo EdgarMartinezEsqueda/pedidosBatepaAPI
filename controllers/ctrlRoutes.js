@@ -43,13 +43,7 @@ const createRoute = async (req, res) => {
 
 const getAllRoutes = async (req, res) => {
     try {
-        const { page = 1, limit = 10 } = req.query; // Pagination parameters
-        const offset = (page - 1) * limit;
-
-        const routes = await Ruta.findAll({
-            limit: parseInt(limit),
-            offset: parseInt(offset),
-        });
+        const routes = await Ruta.findAll();
 
         logger.info(`Fetched ${routes.length} routes`); // Log success
         return sendSuccessResponse(res, 200, routes);

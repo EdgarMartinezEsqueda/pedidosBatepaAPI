@@ -47,13 +47,7 @@ const createCommunity = async (req, res) => {
 
 const getAllCommunities = async (req, res) => {
     try {
-        const { page = 1, limit = 10 } = req.query; // Pagination parameters
-        const offset = (page - 1) * limit;
-
-        const community = await Comunidad.findAll({
-            limit: parseInt(limit),
-            offset: parseInt(offset),
-        });
+        const community = await Comunidad.findAll();
 
         logger.info(`Fetched ${community.length} community`); // Log success
         return sendSuccessResponse(res, 200, community);
