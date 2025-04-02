@@ -18,6 +18,7 @@ app.use("/usuarios", require("./routes/users"));
 app.use("/pedidos", require("./routes/orders"));
 app.use("/comunidades", require("./routes/communities"));
 app.use("/rutas", require("./routes/routes"));
+app.use("/municipios", require("./routes/municipality"));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
