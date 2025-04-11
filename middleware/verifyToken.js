@@ -42,6 +42,18 @@ const verifyTokenAndAuthorization = (req, res, next) => {
     });
 };
 
+// Verify token and role
+const verifyTokenAndRole = (req, res, next) => {
+    verifyToken(req, res, () => {
+        console.log(req.user)
+        if ( !req.user.rol !== "Almacen" ) {
+            next();
+        } else {
+            return sendErrorResponse(res, 403, "You are not authorized to perform this action");
+        }
+    });
+};
+
 // Verify token and admin role
 const verifyTokenAndAdmin = (req, res, next) => {
     verifyToken(req, res, () => {
@@ -57,4 +69,5 @@ module.exports = {
     verifyToken,
     verifyTokenAndAuthorization,
     verifyTokenAndAdmin,
+    verifyTokenAndRole
 };
