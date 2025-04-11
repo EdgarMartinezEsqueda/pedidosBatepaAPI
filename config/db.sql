@@ -13,7 +13,9 @@ CREATE TABLE usuarios (
 -- Tabla municipios
 CREATE TABLE municipios (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    nombre VARCHAR(100) NOT NULL UNIQUE
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- Tabla rutas (se puede borrar, las comunidades/pedidos quedarán sin ruta)
