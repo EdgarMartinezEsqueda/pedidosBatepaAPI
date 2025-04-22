@@ -1,5 +1,6 @@
-const { Comunidad } = require("../models/index");
+const { Comunidad, Ruta, Municipio } = require("../models/index");
 const logger = require("../utils/logger");
+const { Sequelize } = require("sequelize");
 
 // Utility functions for responses
 const sendErrorResponse = (res, statusCode, message) => {
@@ -20,16 +21,16 @@ const sendSuccessResponse = (res, statusCode, data) => {
 
 const createCommunity = async (req, res) => {
     try {
-        const { nombre, jefa, contacto, direccion, idRuta, municipio } = req.body;
-
+        const { nombre, jefa, contacto, direccion, idRuta, idMunicipio } = req.body;
+        
         // Validate required fields
-        if (!nombre || !idRuta || !municipio) 
+        if (!nombre || !idRuta || !idMunicipio) 
             return sendErrorResponse(res, 400, "Missing or invalid fields");
 
         // Create the order
         const community = await Comunidad.create({
             nombre,
-            municipio,
+            idMunicipio,
             jefa,
             contacto,
             direccion,
@@ -47,15 +48,24 @@ const createCommunity = async (req, res) => {
 
 const getAllCommunities = async (req, res) => {
     try {
-        const community = await Comunidad.findAll();
-
-        logger.info(`Fetched ${community.length} community`); // Log success
-        return sendSuccessResponse(res, 200, community);
+        const comunidades = await Comunidad.findAll({
+          attributes: ["id", "nombre", "jefa", "contacto", "direccion", "idRuta",
+            [Sequelize.col("ruta.nombre"), "nombreRuta"],
+            [Sequelize.col("municipio.nombre"), "nombreMunicipio"]
+          ],
+          include: [
+            { model: Ruta, as: "ruta", attributes: [] },
+            { model: Municipio, as: "municipio", attributes: [] }
+          ],
+          distinct: true
+        });
+    
+        return sendSuccessResponse(res, 200, comunidades);
     } catch (e) {
-        logger.error(`Error fetching all community: ${e.message}`); // Log error
+        logger.error(`Error fetching communities: ${e.message}`);
         return sendErrorResponse(res, 500, "Internal server error");
     }
-}
+};
 
 const getCommunitiesByCity = async (req, res) => {
     try {
@@ -67,6 +77,36 @@ const getCommunitiesByCity = async (req, res) => {
         return sendSuccessResponse(res, 200, communities);
     } catch (e) {
         logger.error(`Error fetching all communities for City: ${municipio}\n${e.message}`); // Log error
+        return sendErrorResponse(res, 500, "Internal server error");
+    }
+}
+
+const getCommunitiesByRoute = async (req, res) => {
+    try {
+        const ruta = req.params.ruta;
+        const communities = await Comunidad.findAll({
+            attributes: [
+                "id",
+                "nombre",
+                "jefa",
+                "contacto",
+                "direccion",
+                [Sequelize.col("municipio.nombre"), "nombreMunicipio"] // Alias en minúsculas (si aplica)
+            ],
+            include: [
+                {
+                    model: Municipio,
+                    as: "municipio", // Asegúrate que coincida con el alias de la asociación
+                    attributes: [],
+                    required: true
+                }
+            ],
+            where: { idRuta : ruta }
+        });
+        logger.info(`Fetched ${communities.length} communities`); // Log success
+        return sendSuccessResponse(res, 200, communities);
+    } catch (e) {
+        logger.error(`Error fetching all communities for Route: ${req.params.ruta}\n${e.message}`); // Log error
         return sendErrorResponse(res, 500, "Internal server error");
     }
 }
@@ -168,6 +208,7 @@ module.exports= {
     getAllCommunities,
     getCommunity,
     getCommunitiesByCity,
+    getCommunitiesByRoute,
     updateCommunity,
     deleteCommunity
 }
