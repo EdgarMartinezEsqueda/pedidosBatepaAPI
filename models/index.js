@@ -11,24 +11,30 @@ const Municipio = require("./municipio");
 // Define relationships
 
 // Ruta has many Comunidades
-Ruta.hasMany(Comunidad, { foreignKey: "idRuta" });
-Comunidad.belongsTo(Ruta, { foreignKey: "idRuta" });
+Ruta.hasMany(Comunidad, { foreignKey: "idRuta", as: "comunidad"});
+Comunidad.belongsTo(Ruta, { foreignKey: "idRuta", as: "ruta" });
 
 // Usuario has many Pedidos
-Usuario.hasMany(Pedido, { foreignKey: "idTs" });
-Pedido.belongsTo(Usuario, { foreignKey: "idTs" });
+Usuario.hasMany(Pedido, { foreignKey: "idTs", as: "pedido" });
+Pedido.belongsTo(Usuario, { foreignKey: "idTs", as: "usuario" });
 
 // Ruta has many Pedidos
-Ruta.hasMany(Pedido, { foreignKey: "idRuta" });
-Pedido.belongsTo(Ruta, { foreignKey: "idRuta" });
+Ruta.hasMany(Pedido, { foreignKey: "idRuta", as: "pedido" });
+Pedido.belongsTo(Ruta, { foreignKey: "idRuta",  as: "ruta" });
 
 // Pedido has many Comunidades through PedidoComunidad
-Pedido.belongsToMany(Comunidad, { through: PedidoComunidad, foreignKey: "idPedido" });
-Comunidad.belongsToMany(Pedido, { through: PedidoComunidad, foreignKey: "idComunidad" });
+Pedido.belongsToMany(Comunidad, { through: PedidoComunidad, foreignKey: "idPedido", as: "comunidad" });
+Comunidad.belongsToMany(Pedido, { through: PedidoComunidad, foreignKey: "idComunidad", as: "pedido" });
 
 // Comunidad belongs to Municipio and Municipio has many Comunidades
-Comunidad.belongsTo(Municipio, { foreignKey: "idMunicipio" });
-Municipio.hasMany(Comunidad, { foreignKey: "idMunicipio" });
+Comunidad.belongsTo(Municipio, { foreignKey: "idMunicipio", as: "municipio" });
+Municipio.hasMany(Comunidad, { foreignKey: "idMunicipio", as: "comunidad" });
+
+Pedido.hasMany(PedidoComunidad, { foreignKey: "idPedido", as: "pedidoComunidad" });
+PedidoComunidad.belongsTo(Pedido, { foreignKey: "idPedido", as: "pedido" });
+
+Comunidad.hasMany(PedidoComunidad, { foreignKey: "idComunidad", as: "pedidoComunidad" });
+PedidoComunidad.belongsTo(Comunidad, { foreignKey: "idComunidad", as: "comunidad" });
 
 // Export models
 module.exports = {
@@ -38,4 +44,5 @@ module.exports = {
     Ruta,
     Usuario,
     PedidoComunidad,
+    Municipio
 };

@@ -10,6 +10,6 @@ const PedidoComunidad = sequelize.define("pedidoComunidad", {
     despensasApadrinadas: DataTypes.INTEGER,
     arpilladas: DataTypes.BOOLEAN,
     observaciones: DataTypes.TEXT,
-});
+}, { tableName: "pedidoComunidad" });
 
 module.exports = PedidoComunidad;
