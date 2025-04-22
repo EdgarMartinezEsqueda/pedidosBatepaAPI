@@ -21,7 +21,7 @@ const sendSuccessResponse = (res, statusCode, data) => {
 const getAllMunicipios = async (req, res) => {
     try {
         const municipios = await Municipio.findAll({
-            order: [['nombre', 'ASC']] // Orden alfabético
+            order: [["nombre", "ASC"]] // Orden alfabético
         });
         
         logger.info(`Fetched ${municipios.length} municipios`);
