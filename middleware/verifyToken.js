@@ -34,7 +34,7 @@ const verifyToken = (req, res, next) => {
 // Verify token and authorization
 const verifyTokenAndAuthorization = (req, res, next) => {
     verifyToken(req, res, () => {
-        if (req.user.id === req.params.id || req.user.rol === "Direccion" ) {
+        if (req.user.id === Number(req.params.id) || req.user.rol === "Direccion" ) {
             next();
         } else {
             return sendErrorResponse(res, 403, "You are not authorized to perform this action");
@@ -45,8 +45,7 @@ const verifyTokenAndAuthorization = (req, res, next) => {
 // Verify token and role
 const verifyTokenAndRole = (req, res, next) => {
     verifyToken(req, res, () => {
-        console.log(req.user)
-        if ( !req.user.rol !== "Almacen" ) {
+        if ( req.user.rol !== "Almacen" ) {
             next();
         } else {
             return sendErrorResponse(res, 403, "You are not authorized to perform this action");
@@ -65,9 +64,21 @@ const verifyTokenAndAdmin = (req, res, next) => {
     });
 };
 
+// Verify token and leadership role (Director or Coordinator)
+const verifyTokenAndLeadership = (req, res, next) => {
+    verifyToken(req, res, () => {
+        if (["Direccion", "Coordinadora"].includes(req.user.rol)) {
+            next();
+        } else {
+            sendErrorResponse(res, 403, "Se requiere rol de Dirección o Coordinadora");
+        }
+    });
+};
+
 module.exports = {
     verifyToken,
     verifyTokenAndAuthorization,
     verifyTokenAndAdmin,
-    verifyTokenAndRole
+    verifyTokenAndRole,
+    verifyTokenAndLeadership
 };
