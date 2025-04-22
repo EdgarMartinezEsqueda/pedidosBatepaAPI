@@ -83,11 +83,11 @@ const loginUsers = async (req, res) => {
         const accessToken = jwt.sign( { id: user.id, rol: user.rol }, process.env.FRASE_JWT );
 
     	// Configurar cookie HTTP-Only
-        res.cookie('jwt', accessToken, {
+        res.cookie("jwt", accessToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production', // Solo HTTPS en prod
-            sameSite: 'strict',
-            path: '/'
+            secure: process.env.NODE_ENV === "production", // Solo HTTPS en prod
+            sameSite: "strict",
+            path: "/"
         });
 
         logger.info(`User successfully logged in: ${user.id}`);
@@ -100,10 +100,10 @@ const loginUsers = async (req, res) => {
 
 // logout user
 const logoutUser = (req, res) => {
-    res.clearCookie('jwt', {
+    res.clearCookie("jwt", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict"
     });
     return sendSuccessResponse(res, 200, { message: "Logout exitoso" });
 };
@@ -112,7 +112,7 @@ const logoutUser = (req, res) => {
 const getCurrentUser = async (req, res) => {
     try {
         const user = await Usuario.findByPk(req.user.id, {
-        attributes: { exclude: ['password'] }
+        attributes: { exclude: ["password"] }
     });
       
     if (!user) return sendErrorResponse(res, 404, "Usuario no encontrado");
