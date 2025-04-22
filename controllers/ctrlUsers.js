@@ -1,5 +1,6 @@
 const { Usuario } = require("../models/index");
 const logger = require("../utils/logger");
+const { sendVerificationEmail } = require("../utils/email/emailService");
 
 const argon2 = require("argon2");
 
@@ -40,6 +41,12 @@ const updateUser = async (req, res) => {
             return sendErrorResponse(res, 404, "User not found");
         }
 
+        // Check if there are fields to update
+        if (Object.keys(updates).length === 0) {
+            logger.warn(`There are no updates for the user with ID: ${id}`); // Log error
+            return sendErrorResponse(res, 400, "No fields to update");
+        }
+
         // Hash password if provided
         if (updates.password) {
             updates.password = await argon2.hash(updates.password);
@@ -47,10 +54,15 @@ const updateUser = async (req, res) => {
 
         // Update user
         const [result] = await Usuario.update(updates, { where: { id } });
-
+        
         if (result !== 1) {
             logger.error(`Failed to update user with ID: ${id}`); // Log error
             return sendErrorResponse(res, 500, "Failed to update user");
+        }
+
+        if(updates.verificado) {
+            await sendVerificationEmail(user);
+            logger.info(`Verification email sent to: ${user.email}`); // Log success
         }
 
         logger.info(`User updated successfully: ${id}`); // Log success
@@ -158,6 +170,12 @@ const verifyUser = async (req, res) => {
 
         if (user[0] === 0) { // No rows updated
             return sendErrorResponse(res, 404, "User not found");
+        }
+
+        if(verificado) {
+            const user = await Usuario.findByPk(id);
+            await sendVerificationEmail(user);
+            logger.info(`Verification email sent to: ${user.email}`); // Log success
         }
 
         return sendSuccessResponse(res, 200, { message: `User verification status updated to ${verificado}` });
