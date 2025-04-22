@@ -1,5 +1,6 @@
-const { Pedido, Ruta, PedidoComunidad, Comunidad } = require("../models");
+const { Pedido, Ruta, PedidoComunidad, Usuario, Comunidad, Municipio } = require("../models");
 const logger = require("../utils/logger");
+const sequelize = require("../config/database")
 
 // Utility function for error responses
 const sendErrorResponse = (res, statusCode, message) => {
@@ -34,8 +35,7 @@ const createOrder = async (req, res) => {
             idRuta,
             fechaEntrega
         });
-
-        // Add communities to the order
+        // Add orders to the order
         for (const comunidad of comunidades) {
             await PedidoComunidad.create({
                 idPedido: pedido.id,
@@ -61,10 +61,18 @@ const createOrder = async (req, res) => {
 const getAllOrders = async (req, res) => {
     try {
         const pedidos = await Pedido.findAll( {
-            include: [ {
-                    model: Comunidad,
-                    through: { attributes: [] }, // Exclude junction table attributes
-            } ]
+            include: [
+                {
+                    model: Usuario,  // Modelo de Usuario
+                    attributes: ["username"],  // Solo el campo nombre del usuario
+                    as: "usuario"  // Alias para el modelo de Usuario
+                },
+                {
+                    model: Ruta,  // Modelo de Ruta
+                    attributes: ["nombre"],  // Solo el campo nombre de la ruta
+                    as: "ruta"  // Alias para el modelo de Ruta
+                } ],
+            order: [["id", "DESC" ]], // Obtener los pedidos mas recientes al inicio
         } );
 
         return sendSuccessResponse(res, 200, pedidos);
@@ -80,15 +88,39 @@ const getOrder = async (req, res) => {
         const { id } = req.params;
 
         const pedido = await Pedido.findByPk(id, {
-            include: [ {
-                    model: Comunidad,
-                    through: { attributes: [] }, // Exclude junction table attributes
+            include: [
+                {
+                    model: Usuario,
+                    attributes: ["username"],
+                    as: "usuario"
+                },
+                {
+                    model: Ruta,
+                    attributes: ["nombre"],
+                    as: "ruta"
+                },
+                {   
+                    model: PedidoComunidad,
+                    include: [
+                        {
+                            model: Comunidad,
+                            attributes: ["nombre", "jefa", "contacto"],
+                            include: [
+                                {
+                                    model: Municipio,
+                                    attributes: ["nombre"],
+                                    as: "municipio"
+                                }
+                            ],
+                            as: "comunidad"
+                        }
+                    ],
+                    as: "pedidoComunidad"
                 } ]
         } );
 
         if (!pedido) 
             return sendErrorResponse(res, 404, "Order not found");
-
         return sendSuccessResponse(res, 200, pedido);
     } catch (e) {
         logger.error(`Error fetching order: ${e.message}`);
@@ -98,32 +130,78 @@ const getOrder = async (req, res) => {
 
 // Update an order
 const updateOrder = async (req, res) => {
+    let transaction;
     try {
         const { id } = req.params;
-        const updates = req.body;
+        const { fechaEntrega, devoluciones, pedidoComunidad, estado, ...otrosUpdates } = req.body;
+        
+        if (isNaN(id)) return sendErrorResponse(res, 400, "ID inválido");
 
-        // Validate ID
-        if (isNaN(id)) {
-            return sendErrorResponse(res, 400, "Invalid ID");
-        }
+        transaction = await sequelize.transaction();
 
-        // Check if the order exists
-        const pedido = await Pedido.findByPk(id);
+        // 1. Actualizar pedido principal
+        const pedido = await Pedido.findByPk(id, { transaction });
         if (!pedido) {
-            return sendErrorResponse(res, 404, "Order not found");
+            await transaction.rollback();
+            return sendErrorResponse(res, 404, "Pedido no encontrado");
         }
 
-        // Update the order
-        const [result] = await Pedido.update(updates, { where: { id } });
+        // Actualizar campos permitidos
+        const updateFields = {};
+        if (fechaEntrega) updateFields.fechaEntrega = fechaEntrega;
+        if (devoluciones !== undefined) updateFields.devoluciones = devoluciones;
+        if (estado) updateFields.estado = estado;
+        
+        await pedido.update(updateFields, { transaction });
 
-        if (result !== 1) {
-            return sendErrorResponse(res, 500, "Failed to update order");
+        // 2. Manejar pedidoComunidad
+        if (pedidoComunidad) {
+            if (!Array.isArray(pedidoComunidad)) {
+                await transaction.rollback();
+                return sendErrorResponse(res, 400, "Formato inválido para pedidoComunidad");
+            }
+
+            // Eliminar existentes y crear nuevas
+            await PedidoComunidad.destroy({ where: { idPedido: id }, transaction });
+            
+            await PedidoComunidad.bulkCreate(
+                pedidoComunidad.map(pc => ({
+                    idPedido: id,
+                    idComunidad: pc.idComunidad,
+                    despensasCosto: pc.despensasCosto || 0,
+                    despensasMedioCosto: pc.despensasMedioCosto || 0,
+                    despensasSinCosto: pc.despensasSinCosto || 0,
+                    despensasApadrinadas: pc.despensasApadrinadas || 0,
+                    arpilladas: pc.arpilladas || false,
+                    observaciones: pc.observaciones || ""
+                })), 
+                { transaction }
+            );
         }
 
-        return sendSuccessResponse(res, 200, { message: "Order updated" });
+        await transaction.commit(); 
+
+        // 3. Obtener datos actualizados SIN TRANSACCIÓN
+        const updatedOrder = await Pedido.findByPk(id, {
+            include: [{
+                model: PedidoComunidad,
+                include: [{
+                    model: Comunidad,
+                    as: "comunidad"
+                }],
+                as: "pedidoComunidad"
+            }]
+        });
+
+        return sendSuccessResponse(res, 200, updatedOrder);
+
     } catch (e) {
-        logger.error(`Error updating order: ${e.message}`);
-        return sendErrorResponse(res, 500, "Internal server error");
+        // Verificar si la transacción sigue activa
+        if (transaction && !transaction.finished) 
+            await transaction.rollback();
+        
+        logger.error(`Error actualizando pedido: ${e.message}`);
+        return sendErrorResponse(res, 500, "Error interno del servidor");
     }
 };
 
@@ -157,10 +235,25 @@ const deleteOrder = async (req, res) => {
     }
 };
 
+const getOrdersByRoute = async (req, res) => {
+    try {
+        const ruta = req.params.ruta;
+        const orders = await Pedido.findAll({
+            where: { idRuta : ruta }
+        });
+        logger.info(`Fetched ${orders.length} orders`); // Log success
+        return sendSuccessResponse(res, 200, orders);
+    } catch (e) {
+        logger.error(`Error fetching all orders for Route: ${req.params.ruta}\n${e.message}`); // Log error
+        return sendErrorResponse(res, 500, "Internal server error");
+    }
+}
+
 module.exports = {
     createOrder,
     getAllOrders,
     getOrder,
+    getOrdersByRoute,
     updateOrder,
     deleteOrder,
 };
