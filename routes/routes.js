@@ -5,10 +5,10 @@ const verify = require("../middleware/verifyToken");
 
 // Route endpoints
 router
-    .post("/", verify.verifyTokenAndAdmin, ctrlRoutes.createRoute)
-    .get("/", verify.verifyTokenAndAuthorization, ctrlRoutes.getAllRoutes)
-    .get("/:id", verify.verifyTokenAndAuthorization, ctrlRoutes.getRoute)
-    .patch("/:id", verify.verifyTokenAndAdmin, ctrlRoutes.updateRoute)
-    .delete("/:id", verify.verifyTokenAndAdmin, ctrlRoutes.deleteRoute);
+    .post("/", verify.verifyTokenAndLeadership, ctrlRoutes.createRoute)
+    .get("/", verify.verifyToken, ctrlRoutes.getAllRoutes)
+    .get("/:id", verify.verifyToken, ctrlRoutes.getRoute)
+    .patch("/:id", verify.verifyTokenAndLeadership, ctrlRoutes.updateRoute)
+    .delete("/:id", verify.verifyTokenAndLeadership, ctrlRoutes.deleteRoute);
 
 module.exports = router;

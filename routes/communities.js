@@ -5,11 +5,12 @@ const verify = require("../middleware/verifyToken");
 
 // Community endpoints
 router
-    .post("/", verify.verifyTokenAndAdmin, ctrlCommunities.createCommunity)
+    .post("/", verify.verifyTokenAndLeadership, ctrlCommunities.createCommunity)
     .get("/", verify.verifyToken, ctrlCommunities.getAllCommunities)
-    .get("/:id", verify.verifyTokenAndAuthorization, ctrlCommunities.getCommunity)
-    .patch("/:id", verify.verifyTokenAndAdmin, ctrlCommunities.updateCommunity)
-    .delete("/:id", verify.verifyTokenAndAdmin, ctrlCommunities.deleteCommunity)
+    .get("/:id", verify.verifyToken, ctrlCommunities.getCommunity)
+    .patch("/:id", verify.verifyTokenAndLeadership, ctrlCommunities.updateCommunity)
+    .delete("/:id", verify.verifyTokenAndLeadership, ctrlCommunities.deleteCommunity)
+    .get("/ruta/:ruta", verify.verifyToken, ctrlCommunities.getCommunitiesByRoute)
     .get("/ciudad/:municipio", verify.verifyToken, ctrlCommunities.getCommunitiesByCity);
 
 module.exports = router;

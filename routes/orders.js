@@ -5,10 +5,11 @@ const verify = require("../middleware/verifyToken");
 
 // Order endpoints
 router
-    .post("/", verify.verifyTokenAndAuthorization, ctrlPedidos.createOrder)
+    .post("/", verify.verifyTokenAndRole, ctrlPedidos.createOrder)
     .get("/", verify.verifyToken, ctrlPedidos.getAllOrders)
     .get("/:id", verify.verifyToken, ctrlPedidos.getOrder)
-    .patch("/:id", verify.verifyTokenAndAuthorization, ctrlPedidos.updateOrder)
-    .delete("/:id", verify.verifyTokenAndAdmin, ctrlPedidos.deleteOrder); 
+    .get("/ruta/:id", verify.verifyToken, ctrlPedidos.getOrdersByRoute)
+    .patch("/:id", verify.verifyTokenAndRole, ctrlPedidos.updateOrder)
+    .delete("/:id", verify.verifyTokenAndRole, ctrlPedidos.deleteOrder); 
 
 module.exports = router;
