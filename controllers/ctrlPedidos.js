@@ -151,7 +151,7 @@ const updateOrder = async (req, res) => {
         if (fechaEntrega) updateFields.fechaEntrega = fechaEntrega;
         if (devoluciones !== undefined) updateFields.devoluciones = devoluciones;
         if (estado) updateFields.estado = estado;
-        
+
         await pedido.update(updateFields, { transaction });
 
         // 2. Manejar pedidoComunidad
@@ -180,20 +180,8 @@ const updateOrder = async (req, res) => {
         }
 
         await transaction.commit(); 
-
-        // 3. Obtener datos actualizados SIN TRANSACCIÓN
-        const updatedOrder = await Pedido.findByPk(id, {
-            include: [{
-                model: PedidoComunidad,
-                include: [{
-                    model: Comunidad,
-                    as: "comunidad"
-                }],
-                as: "pedidoComunidad"
-            }]
-        });
-
-        return sendSuccessResponse(res, 200, updatedOrder);
+       
+        return sendSuccessResponse(res, 200, "successfully updated order");
 
     } catch (e) {
         // Verificar si la transacción sigue activa
