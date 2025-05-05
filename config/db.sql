@@ -6,6 +6,8 @@ CREATE TABLE usuarios (
     email VARCHAR(256) UNIQUE NOT NULL,
     rol ENUM('Direccion', 'Almacen', 'Ts', 'Coordinadora') DEFAULT 'Almacen',
     verificado BOOLEAN DEFAULT FALSE,
+    resetPasswordToken VARCHAR(256) NULL,
+    resetPasswordExpires DATETIME NULL,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
