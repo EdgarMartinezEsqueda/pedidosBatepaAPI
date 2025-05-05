@@ -7,7 +7,9 @@ const Usuario = sequelize.define( "usuarios", {
     email: { type: DataTypes.STRING(256), validate: { isEmail : true }, unique: true, allowNull: false },
     password: { type: DataTypes.STRING(256), allowNull: false },
     rol: { type: DataTypes.ENUM("Direccion", "Almacen", "Ts", "Coordinadora"), default: "Almacen" },
-    verificado: { type: DataTypes.BOOLEAN, defaultValue: false }
+    verificado: { type: DataTypes.BOOLEAN, defaultValue: false },
+    resetPasswordToken: { type: DataTypes.STRING },
+    resetPasswordExpires: { type: DataTypes.DATE }
 }, {} );
 
 module.exports = Usuario;
