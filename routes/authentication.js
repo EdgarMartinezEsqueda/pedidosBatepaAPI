@@ -8,6 +8,8 @@ router
     .get("/me", verify.verifyToken, controllerAuthentication.getCurrentUser)
     .post("/registro", controllerAuthentication.registerUsers)
     .post("/login", controllerAuthentication.loginUsers)
-    .post("/logout", controllerAuthentication.logoutUser);
+    .post("/logout", controllerAuthentication.logoutUser)
+    .post("/forgotPassword", controllerAuthentication.requestPasswordReset)
+    .post("/resetPassword/:token", controllerAuthentication.resetPassword);
 
 module.exports = router;
