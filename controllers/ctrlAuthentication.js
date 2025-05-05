@@ -135,6 +135,7 @@ const requestPasswordReset = async (req, res) => {
         const { email } = req.body;
         
         const user = await Usuario.findOne({ where: { email } });
+
         if (!user) 
             return sendErrorResponse(res, 404, "Si el email existe, te enviaremos un enlace de recuperación NO JALA");
 
@@ -146,7 +147,7 @@ const requestPasswordReset = async (req, res) => {
             resetPasswordToken: token,
             resetPasswordExpires: expiresAt
         }, { where: { id: user.dataValues.id } });
-        console.log(user.dataValues)
+
         // Enviar email con el token
         await sendPasswordResetEmail(user, token);
 
@@ -164,7 +165,7 @@ const resetPassword = async (req, res) => {
     try {
         const { token } = req.params;
         const { password, confirmPassword } = req.body;
-        console.log( password, confirmPassword, token );
+        
         // Validaciones
         if (password !== confirmPassword) 
             return sendErrorResponse(res, 400, "Las contraseñas no coinciden");
