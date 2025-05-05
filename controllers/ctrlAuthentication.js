@@ -1,9 +1,11 @@
 require("dotenv").config();
-const { Usuario } = require("../models/index");
-const logger = require("../utils/logger");
-
+const crypto = require("crypto");
+const { Op } = require("sequelize");
 const argon2 = require("argon2");
 const jwt = require("jsonwebtoken");
+const logger = require("../utils/logger");
+const { Usuario } = require("../models/index");
+const { sendPasswordResetEmail } = require("../utils/email/emailService");
 
 // Utility functions for responses
 const sendErrorResponse = (res, statusCode, message) => {
@@ -111,6 +113,9 @@ const logoutUser = (req, res) => {
 // Get current user
 const getCurrentUser = async (req, res) => {
     try {
+        if (!req.user || !req.user.id) 
+          return sendErrorResponse(res, 401, "No autenticado");
+
         const user = await Usuario.findByPk(req.user.id, {
         attributes: { exclude: ["password"] }
     });
@@ -122,11 +127,84 @@ const getCurrentUser = async (req, res) => {
         console.error(e);
         return sendErrorResponse(res, 500, "Error del servidor");
     }
-  };
+};
+
+// Request password reset
+const requestPasswordReset = async (req, res) => {
+    try {
+        const { email } = req.body;
+        
+        const user = await Usuario.findOne({ where: { email } });
+        if (!user) 
+            return sendErrorResponse(res, 404, "Si el email existe, te enviaremos un enlace de recuperación NO JALA");
+
+        // Generar token seguro con expiración
+        const token = crypto.randomBytes(20).toString('hex');
+        const expiresAt = new Date(Date.now() + 3600000); // 1 hora
+
+        await Usuario.update({
+            resetPasswordToken: token,
+            resetPasswordExpires: expiresAt
+        }, { where: { id: user.dataValues.id } });
+        console.log(user.dataValues)
+        // Enviar email con el token
+        await sendPasswordResetEmail(user, token);
+
+        logger.info(`Password reset requested for: ${email}`);
+        return sendSuccessResponse(res, 200, { message: "Si el email existe, te enviaremos un enlace de recuperación" });
+
+    } catch (e) {
+        console.error(e);
+        return sendErrorResponse(res, 500, "Error al procesar la solicitud");
+    }
+};
+
+// Reset password
+const resetPassword = async (req, res) => {
+    try {
+        const { token } = req.params;
+        const { password, confirmPassword } = req.body;
+        console.log( password, confirmPassword, token );
+        // Validaciones
+        if (password !== confirmPassword) 
+            return sendErrorResponse(res, 400, "Las contraseñas no coinciden");
+        
+        if (password.length < 6) 
+            return sendErrorResponse(res, 400, "La contraseña debe tener al menos 6 caracteres");
+        
+        const user = await Usuario.findOne({
+            where: {
+                resetPasswordToken: token,
+                resetPasswordExpires: { [Op.gt]: Date.now() }
+            }
+        });
+
+        if (!user) 
+            return sendErrorResponse(res, 400, "El enlace de recuperación es inválido o ha expirado");
+
+        // Actualizar contraseña y limpiar token
+        const hashedPassword = await argon2.hash(password);
+        
+        await Usuario.update({
+            password: hashedPassword,
+            resetPasswordToken: null,
+            resetPasswordExpires: null
+        }, { where: { id: user.id } });
+
+        logger.info(`Password reset successful for user: ${user.id}`);
+        return sendSuccessResponse(res, 200, { message: "Contraseña actualizada exitosamente" });
+
+    } catch (e) {
+        console.error(e);
+        return sendErrorResponse(res, 500, "Error al actualizar la contraseña");
+    }
+};
 
 module.exports = {
     registerUsers,
     loginUsers,
     logoutUser,
-    getCurrentUser
+    getCurrentUser,
+    requestPasswordReset,
+    resetPassword
 };
