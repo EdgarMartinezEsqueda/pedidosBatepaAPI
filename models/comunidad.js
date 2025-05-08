@@ -8,7 +8,8 @@ const Comunidad = sequelize.define("comunidades", {
     jefa: DataTypes.STRING(100), // De TEXT a STRING
     contacto: DataTypes.STRING(50), // De TEXT a STRING
     direccion: DataTypes.TEXT,
-    idRuta: { type: DataTypes.INTEGER, references: { model: "rutas", key: "id" } }
+    idRuta: { type: DataTypes.INTEGER, references: { model: "rutas", key: "id" } },
+    costoPaquete: { type: DataTypes.DECIMAL(10, 2), defaultValue: 170.00 },
 });
 
 module.exports = Comunidad;

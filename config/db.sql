@@ -37,6 +37,7 @@ CREATE TABLE comunidades (
     contacto VARCHAR(50),
     direccion TEXT,
     idRuta INT NULL, -- Permite NULL al borrar la ruta
+    costoPaquete DECIMAL(10, 2) DEFAULT 170.00,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (idRuta) REFERENCES rutas(id) ON DELETE SET NULL,
