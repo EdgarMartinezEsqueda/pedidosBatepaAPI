@@ -10,6 +10,7 @@ router
     .get("/rutas", verify.verifyTokenAndAdmin, ctrlReports.getReporteRutas  )
     .get("/comunidades", verify.verifyTokenAndAdmin, ctrlReports.getReporteComunidades  )
     .get("/apadrinadas", verify.verifyTokenAndAdmin, ctrlReports.getReporteApadrinadas  )
-    .get("/ts", verify.verifyTokenAndAdmin, ctrlReports.getReporteTS  );
+    .get("/ts", verify.verifyTokenAndAdmin, ctrlReports.getReporteTS  )
+    .get("/economicos", verify.verifyTokenAndAdmin, ctrlReports.getReporteEconomico  );
 
 module.exports = router;

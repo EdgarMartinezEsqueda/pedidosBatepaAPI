@@ -820,11 +820,215 @@ const getReporteApadrinadas = async (req, res) => {
     }
 };
 
+const getReporteEconomico = async (req, res) => {
+    try {
+        const { año, mes, comunidadId, municipioId, rutaId, tsId } = req.query;
+
+        // Configurar filtros de fecha
+        const wherePedido = {};
+        if (año) {
+            const start = new Date(año, 0, 1);
+            const end = new Date(año, 11, 31);
+            wherePedido.fechaEntrega = { [Op.between]: [start, end] };
+        }
+        if (mes && año) {
+            const start = new Date(año, mes - 1, 1);
+            const end = new Date(año, mes, 0);
+            wherePedido.fechaEntrega = { [Op.between]: [start, end] };
+        }
+
+        // Filtros adicionales
+        if (rutaId) wherePedido.idRuta = rutaId;
+        if (tsId) wherePedido.idTs = tsId;
+
+        // Obtener todos los pedidosComunidad con relaciones necesarias
+        const pedidoComunidades = await PedidoComunidad.findAll({
+            include: [
+                {
+                    model: Pedido,
+                    as: "pedido",
+                    where: wherePedido,
+                    required: true,
+                    include: [
+                        { model: Ruta, as: "ruta", attributes: ["id", "nombre"] },
+                        { model: Usuario, as: "usuario", attributes: ["id", "username"] }
+                    ]
+                },
+                {
+                    model: Comunidad,
+                    as: "comunidad",
+                    required: true,
+                    include: [{
+                        model: Municipio,
+                        as: "municipio",
+                        attributes: ["id", "nombre"],
+                        where: municipioId ? { id: municipioId } : {},
+                        required: !!municipioId
+                    }],
+                    where: comunidadId ? { id: comunidadId } : {}
+                }
+            ]
+        });
+
+        // Procesamiento de datos (cambia la estructura de 'metrics')
+        let metrics = {
+            evolucionMensual: {},
+            comunidades: {},
+            municipios: {},
+            rutas: {},
+            resumenGlobal: {
+                costoTotal: 0,          // Nuevo campo
+                ingresosRecaudados: 0,  // Antes 'ingresos'
+                despensasSubsidiadas: 0,// Antes 'costosBanco'
+                balanceNeto: 0,
+                detalle: {
+                    costoCompleto: 0,
+                    medioCosto: 0,
+                    sinCosto: 0,
+                    apadrinadas: 0
+                }
+            }
+        };
+
+        pedidoComunidades.forEach(pc => {
+            const costo = pc.comunidad.costoPaquete;
+            const mesKey = new Date(pc.pedido.fechaEntrega).toISOString().slice(0, 7);
+            
+            // Cálculos económicos (se mantienen igual)
+            const ingresosCosto = pc.despensasCosto * costo;
+            const ingresosMedio = pc.despensasMedioCosto * (costo / 2);
+            const costoSin = pc.despensasSinCosto * costo;
+            const costoApadrinadas = pc.despensasApadrinadas * costo;
+
+            // Nuevas variables agrupadas
+            const ingresosRecaudados = ingresosCosto + ingresosMedio;
+            const despensasSubsidiadas = costoSin + costoApadrinadas;
+            const costoTotal = ingresosRecaudados + despensasSubsidiadas;
+
+            // Actualizar métricas globales (nueva estructura)
+            metrics.resumenGlobal.costoTotal += costoTotal;
+            metrics.resumenGlobal.ingresosRecaudados += ingresosRecaudados;
+            metrics.resumenGlobal.despensasSubsidiadas += despensasSubsidiadas;
+            metrics.resumenGlobal.detalle.costoCompleto += ingresosCosto;
+            metrics.resumenGlobal.detalle.medioCosto += ingresosMedio;
+            metrics.resumenGlobal.detalle.sinCosto += costoSin;
+            metrics.resumenGlobal.detalle.apadrinadas += costoApadrinadas;
+            
+            // Evolución mensual (nueva estructura)
+            if (!metrics.evolucionMensual[mesKey]) {
+                metrics.evolucionMensual[mesKey] = {
+                    costoTotal: 0,
+                    ingresosRecaudados: 0,
+                    despensasSubsidiadas: 0
+                };
+            }
+            metrics.evolucionMensual[mesKey].costoTotal += costoTotal;
+            metrics.evolucionMensual[mesKey].ingresosRecaudados += ingresosRecaudados;
+            metrics.evolucionMensual[mesKey].despensasSubsidiadas += despensasSubsidiadas;
+            
+            // Por comunidad (nueva estructura)
+            const comunidadKey = pc.comunidad.nombre;
+            if (!metrics.comunidades[comunidadKey]) {
+                metrics.comunidades[comunidadKey] = {
+                    costoTotal: 0,
+                    ingresosRecaudados: 0,
+                    despensasSubsidiadas: 0,
+                    municipio: pc.comunidad.municipio.nombre
+                };
+            }
+            metrics.comunidades[comunidadKey].costoTotal += costoTotal;
+            metrics.comunidades[comunidadKey].ingresosRecaudados += ingresosRecaudados;
+            metrics.comunidades[comunidadKey].despensasSubsidiadas += despensasSubsidiadas;
+            
+            // Por municipio (nueva estructura)
+            const municipioKey = pc.comunidad.municipio.nombre;
+            if (!metrics.municipios[municipioKey]) {
+                metrics.municipios[municipioKey] = { 
+                    costoTotal: 0,
+                    ingresosRecaudados: 0,
+                    despensasSubsidiadas: 0 
+                };
+            }
+            metrics.municipios[municipioKey].costoTotal += costoTotal;
+            metrics.municipios[municipioKey].ingresosRecaudados += ingresosRecaudados;
+            metrics.municipios[municipioKey].despensasSubsidiadas += despensasSubsidiadas;
+            
+            // Por ruta (nueva estructura)
+            const rutaKey = pc.pedido.ruta?.nombre || "Sin ruta";
+            if (!metrics.rutas[rutaKey]) {
+                metrics.rutas[rutaKey] = { 
+                    costoTotal: 0,
+                    ingresosRecaudados: 0,
+                    despensasSubsidiadas: 0 
+                };
+            }
+            metrics.rutas[rutaKey].costoTotal += costoTotal;
+            metrics.rutas[rutaKey].ingresosRecaudados += ingresosRecaudados;
+            metrics.rutas[rutaKey].despensasSubsidiadas += despensasSubsidiadas;
+        });
+
+        // Calcular balance neto global
+        metrics.resumenGlobal.balanceNeto = 
+            metrics.resumenGlobal.ingresosRecaudados - metrics.resumenGlobal.despensasSubsidiadas;
+
+        // Formatear respuesta (actualizado para nueva estructura)
+        const response = {
+            resumenGlobal: {
+                ...metrics.resumenGlobal,
+                balanceNeto: metrics.resumenGlobal.balanceNeto
+            },
+            evolucionMensual: Object.entries(metrics.evolucionMensual)
+                .map(([mes, data]) => ({
+                    mes,
+                    costoTotal: data.costoTotal,
+                    ingresosRecaudados: data.ingresosRecaudados,
+                    despensasSubsidiadas: data.despensasSubsidiadas,
+                    balance: data.ingresosRecaudados - data.despensasSubsidiadas
+                }))
+                .sort((a, b) => a.mes.localeCompare(b.mes)),
+            distribucionComunidades: Object.entries(metrics.comunidades)
+                .map(([nombre, data]) => ({
+                    nombre,
+                    costoTotal: data.costoTotal,
+                    ingresosRecaudados: data.ingresosRecaudados,
+                    despensasSubsidiadas: data.despensasSubsidiadas,
+                    municipio: data.municipio,
+                    balance: data.ingresosRecaudados - data.despensasSubsidiadas
+                }))
+                .sort((a, b) => b.balance - a.balance),
+            distribucionMunicipios: Object.entries(metrics.municipios)
+                .map(([nombre, data]) => ({
+                    nombre,
+                    costoTotal: data.costoTotal,
+                    ingresosRecaudados: data.ingresosRecaudados,
+                    despensasSubsidiadas: data.despensasSubsidiadas,
+                    balance: data.ingresosRecaudados - data.despensasSubsidiadas
+                }))
+                .sort((a, b) => b.balance - a.balance),
+            distribucionRutas: Object.entries(metrics.rutas)
+                .map(([nombre, data]) => ({
+                    nombre,
+                    costoTotal: data.costoTotal,
+                    ingresosRecaudados: data.ingresosRecaudados,
+                    despensasSubsidiadas: data.despensasSubsidiadas,
+                    balance: data.ingresosRecaudados - data.despensasSubsidiadas
+                }))
+                .sort((a, b) => b.balance - a.balance)
+        };
+        sendSuccessResponse(res, 200, response);
+
+    } catch (error) {
+        logger.error("Error en getReporteEconomico: ", error);
+        sendErrorResponse(res, 500, error.message);
+    }
+};
+
 module.exports = {
     getResumen,
     getReporteRutas,
     getReporteTS,
     getReporteDespensas,
     getReporteComunidades,
-    getReporteApadrinadas
+    getReporteApadrinadas,
+    getReporteEconomico
 };
