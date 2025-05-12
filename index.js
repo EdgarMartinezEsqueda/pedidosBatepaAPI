@@ -9,7 +9,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors({
     origin: process.env.ORIGIN.split(","),
-    credentials: true // Permitir cookies
+    credentials: true, // Permitir cookies
+    allowedHeaders: ["Content-Type", "X-Requested-With", "Authorization"], // Cabeceras permitidas
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"] // Métodos permitidos
 }));
 app.use(cookieParser());
 // Routes
