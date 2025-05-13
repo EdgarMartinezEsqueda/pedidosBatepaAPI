@@ -5,13 +5,13 @@ const verify = require("../middleware/verifyToken");
 
 // All endpoints for reports
 router
-    .get("/", verify.verifyTokenAndAdmin, ctrlReports.getResumen  )
-    .get("/despensas", verify.verifyTokenAndAdmin, ctrlReports.getReporteDespensas  )
-    .get("/rutas", verify.verifyTokenAndAdmin, ctrlReports.getReporteRutas  )
-    .get("/comunidades", verify.verifyTokenAndAdmin, ctrlReports.getReporteComunidades  )
-    .get("/apadrinadas", verify.verifyTokenAndAdmin, ctrlReports.getReporteApadrinadas  )
-    .get("/ts", verify.verifyTokenAndAdmin, ctrlReports.getReporteTS  )
-    .get("/economicos", verify.verifyTokenAndAdmin, ctrlReports.getReporteEconomico  )
+    .get("/", verify.verifyToken, ctrlReports.getResumen  )
+    .get("/despensas", verify.verifyToken, ctrlReports.getReporteDespensas  )
+    .get("/rutas", verify.verifyToken, ctrlReports.getReporteRutas  )
+    .get("/comunidades", verify.verifyToken, ctrlReports.getReporteComunidades  )
+    .get("/apadrinadas", verify.verifyToken, ctrlReports.getReporteApadrinadas  )
+    .get("/ts", verify.verifyToken, ctrlReports.getReporteTS  )
+    .get("/economicos", verify.verifyToken, ctrlReports.getReporteEconomico  )
     .get("/calendario", verify.verifyToken, ctrlReports.getCalendario);
 
 module.exports = router;
