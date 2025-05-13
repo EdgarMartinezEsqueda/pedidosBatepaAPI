@@ -9,6 +9,8 @@ router
     .get("/", verify.verifyToken, ctrlPedidos.getAllOrders)
     .get("/:id", verify.verifyToken, ctrlPedidos.getOrder)
     .get("/ruta/:id", verify.verifyToken, ctrlPedidos.getOrdersByRoute)
+    .get("/ts/:id", verify.verifyToken, ctrlPedidos.getOrdersByTs)
+    .post("/export", verify.verifyToken, ctrlPedidos.getAllOrdersForExport)
     .patch("/:id", verify.verifyTokenAndRole, ctrlPedidos.updateOrder)
     .delete("/:id", verify.verifyTokenAndRole, ctrlPedidos.deleteOrder); 
 

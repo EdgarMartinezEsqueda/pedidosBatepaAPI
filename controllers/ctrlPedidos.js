@@ -1,3 +1,4 @@
+const { Op } = require("sequelize");
 const { Pedido, Ruta, PedidoComunidad, Usuario, Comunidad, Municipio } = require("../models");
 const logger = require("../utils/logger");
 const sequelize = require("../config/database")
@@ -24,7 +25,7 @@ const sendSuccessResponse = (res, statusCode, data) => {
 const createOrder = async (req, res) => {
     try {
         const { idTs, idRuta, fechaEntrega, comunidades } = req.body;
-
+        
         // Validate required fields
         if (!idTs || !idRuta || !fechaEntrega || !comunidades || !Array.isArray(comunidades)) 
             return sendErrorResponse(res, 400, "Missing or invalid fields");
@@ -45,7 +46,8 @@ const createOrder = async (req, res) => {
                 despensasSinCosto: comunidad.despensasSinCosto,
                 despensasApadrinadas: comunidad.despensasApadrinadas,
                 arpilladas: comunidad.arpilladas,
-                observaciones: comunidad.observaciones
+                observaciones: comunidad.observaciones,
+                comite: comunidad.comite,
             });
         }
 
@@ -173,7 +175,8 @@ const updateOrder = async (req, res) => {
                     despensasSinCosto: pc.despensasSinCosto || 0,
                     despensasApadrinadas: pc.despensasApadrinadas || 0,
                     arpilladas: pc.arpilladas || false,
-                    observaciones: pc.observaciones || ""
+                    observaciones: pc.observaciones || "",
+                    comite: pc.comite || 0
                 })), 
                 { transaction }
             );
@@ -237,51 +240,111 @@ const getOrdersByRoute = async (req, res) => {
     }
 }
 
+const getOrdersByTs = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const orders = await Pedido.findAll({
+            include: [
+                {
+                    model: Usuario,  // Modelo de Usuario
+                    attributes: ["username"],  // Solo el campo nombre del usuario
+                    as: "usuario"  // Alias para el modelo de Usuario
+                },
+                {
+                    model: Ruta,  // Modelo de Ruta
+                    attributes: ["nombre"],  // Solo el campo nombre de la ruta
+                    as: "ruta"  // Alias para el modelo de Ruta
+                } ],
+            order: [["id", "DESC" ]], // Obtener los pedidos mas recientes al inicio
+            where: { idTs : id }
+        });
+        logger.info(`Fetched ${orders.length} orders`); // Log success
+        return sendSuccessResponse(res, 200, orders);
+    } catch (e) {
+        logger.error(`Error fetching all orders for Route: ${req.params.ruta}\n${e.message}`); // Log error
+        return sendErrorResponse(res, 500, "Internal server error");
+    }
+}
+
+// En tu controlador de pedidos
+const getAllOrdersForExport = async (req, res) => {
+  try {
+    const { 
+      usuarios = [], 
+      rutas = [], 
+      estatusPedido = [], 
+      startDate, 
+      endDate 
+    } = req.body.params;
+    
+    const where = {};
+    
+    // Filtros para usuarios, rutas y estado
+    if (usuarios.length > 0) where['$usuario.username$'] = { [Op.in]: usuarios };
+    if (rutas.length > 0) where['$ruta.nombre$'] = { [Op.in]: rutas };
+    if (estatusPedido.length > 0) where.estado = { [Op.in]: estatusPedido };
+    
+    // Manejo preciso de fechas
+    if (startDate || endDate) {
+      const startOfDay = (dateStr) => new Date(new Date(dateStr).setUTCHours(0, 0, 0, 0));
+      const endOfDay = (dateStr) => new Date(new Date(dateStr).setUTCHours(23, 59, 59, 999));
+
+      if (startDate && endDate) {
+        where.fechaEntrega = {
+            [Op.between]: [startOfDay(startDate), endOfDay(endDate)]
+        };
+      } else if (startDate) {
+        where.fechaEntrega = { [Op.gte]: startOfDay(startDate) };
+      } else if (endDate) {
+        where.fechaEntrega = { [Op.lte]: endOfDay(endDate) };
+      }
+    }
+
+    const pedidos = await Pedido.findAll({
+      where,
+      include: [
+        {
+            model: Usuario,
+            as: "usuario",
+            attributes: ["username"],
+        },
+        {
+            model: Ruta,
+            as: "ruta",
+            attributes: ["nombre"],
+        },
+        {
+            model: PedidoComunidad,
+            as: "pedidoComunidad",
+            include: [{
+                model: Comunidad,
+                as: "comunidad",
+                include: [{
+                    model: Municipio,
+                    as: "municipio",
+                    attributes: ["nombre"],
+                }]
+            }]
+        }
+      ],
+      order: [["id", "DESC"]]
+    });
+
+    return sendSuccessResponse(res, 200, pedidos);
+  } catch (e) {
+    console.log(e)
+    logger.error(`Error exporting orders: ${e.message}`);
+    return sendErrorResponse(res, 500, "Error al exportar pedidos");
+  }
+};
+
 module.exports = {
     createOrder,
     getAllOrders,
     getOrder,
     getOrdersByRoute,
+    getOrdersByTs,
+    getAllOrdersForExport,
     updateOrder,
     deleteOrder,
 };
-/*
-// EJEMPLO DE createOrder
-POST /pedidos
-{
-    "idTs": 1,
-    "idRuta": 1,
-    "fechaEntrega": "2023-12-01",
-    "comunidades": [
-        {
-            "idComunidad": 1,
-            "despensasCosto": 10,
-            "despensasMedioCosto": 5,
-            "despensasSinCosto": 2,
-            "despensasApadrinadas": 3,
-            "arpilladas": true
-        },
-        {
-            "idComunidad": 2,
-            "despensasCosto": 8,
-            "despensasMedioCosto": 4,
-            "despensasSinCosto": 1,
-            "despensasApadrinadas": 2,
-            "arpilladas": false
-        }
-    ]
-}
-
-// EJEMPLO DE RESPUESTA
-{
-    "status": "success",
-    "data": {
-        "id": 1,
-        "idTs": 1,
-        "idRuta": 1,
-        "fechaEntrega": "2023-12-01",
-        "estado": "creado",
-        "createdAt": "2023-10-10T12:34:56.000Z"
-    }
-}
-*/
