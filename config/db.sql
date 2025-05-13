@@ -4,7 +4,7 @@ CREATE TABLE usuarios (
     username VARCHAR(256) NOT NULL,
     password VARCHAR(256) NOT NULL,
     email VARCHAR(256) UNIQUE NOT NULL,
-    rol ENUM('Direccion', 'Almacen', 'Ts', 'Coordinadora') DEFAULT 'Almacen',
+    rol ENUM('Direccion', 'Almacen', 'Ts', 'Coordinadora', 'Consejo', 'Contabilidad') DEFAULT 'Almacen',
     verificado BOOLEAN DEFAULT FALSE,
     resetPasswordToken VARCHAR(256) NULL,
     resetPasswordExpires DATETIME NULL,
