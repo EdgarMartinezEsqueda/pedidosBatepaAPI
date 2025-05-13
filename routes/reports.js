@@ -11,6 +11,7 @@ router
     .get("/comunidades", verify.verifyTokenAndAdmin, ctrlReports.getReporteComunidades  )
     .get("/apadrinadas", verify.verifyTokenAndAdmin, ctrlReports.getReporteApadrinadas  )
     .get("/ts", verify.verifyTokenAndAdmin, ctrlReports.getReporteTS  )
-    .get("/economicos", verify.verifyTokenAndAdmin, ctrlReports.getReporteEconomico  );
+    .get("/economicos", verify.verifyTokenAndAdmin, ctrlReports.getReporteEconomico  )
+    .get("/calendario", verify.verifyToken, ctrlReports.getCalendario);
 
 module.exports = router;

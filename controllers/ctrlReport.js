@@ -123,20 +123,43 @@ const getResumen = async (req, res) => {
         // C. Obtener calendario (segunda consulta específica)
         const mesActualInicio = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
         const mesActualFin = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
-        
+
         const calendario = await Pedido.findAll({
             attributes: ["fechaEntrega", "estado"],
-            include: [{
-                model: Ruta,  // Modelo de Ruta
-                attributes: ["nombre"],  // Solo el campo nombre de la ruta
-                as: "ruta"  // Alias para el modelo de Ruta
-            }],
+            include: [
+                {
+                    model: Ruta,
+                    attributes: ["nombre"],
+                    as: "ruta"
+                },
+                {  // ¡Nuevo include para calcular despensas!
+                    model: PedidoComunidad,
+                    as: "pedidoComunidad",
+                    attributes: ["despensasCosto", "despensasMedioCosto", "despensasSinCosto", "despensasApadrinadas"]
+                }
+            ],
             where: { fechaEntrega: { [Op.between]: [mesActualInicio, mesActualFin] } }
         });
+
         // D. Combinar resultados
         const resultadoFinal = {
             ...procesarData(pedidosCompletos),
-            calendario: calendario.map(p => ({ fecha: p.fechaEntrega, estado: p.estado, ruta: p.ruta.nombre }))
+            calendario: calendario.map(p => {
+                // Calcular total de despensas por pedido
+                const totalDespensas = p.pedidoComunidad
+                    ?.reduce((total, pc) => total + 
+                        pc.despensasCosto + 
+                        pc.despensasMedioCosto + 
+                        pc.despensasSinCosto + 
+                        pc.despensasApadrinadas, 0) || 0;
+
+                return {
+                    fecha: p.fechaEntrega,
+                    estado: p.estado,
+                    ruta: p.ruta?.nombre || "Sin ruta",
+                    totalDespensas: totalDespensas  // Nuevo campo
+                };
+            })
         };
 
         sendSuccessResponse(res, 200, resultadoFinal);
@@ -1023,6 +1046,62 @@ const getReporteEconomico = async (req, res) => {
     }
 };
 
+const getCalendario = async (req, res) => {
+    try {
+        // 1. Manejar filtros de fecha (año o todos)
+        const { year } = req.query;
+        let whereClause = {};
+
+        if (year) {
+            const inicioYear = new Date(year, 0, 1); // 1 de Enero del año
+            const finYear = new Date(year, 11, 31); // 31 de Diciembre del año
+            whereClause.fechaEntrega = { [Op.between]: [inicioYear, finYear] };
+        } // Si no hay year, se trae todo el historial
+
+        // 2. Consulta principal con total de despensas
+        const calendario = await Pedido.findAll({
+            attributes: ["fechaEntrega", "estado"],
+            include: [
+                {
+                    model: Ruta,
+                    as: "ruta",
+                    attributes: ["nombre"],
+                },
+                {
+                    model: PedidoComunidad,
+                    as: "pedidoComunidad",
+                    attributes: ["despensasCosto", "despensasMedioCosto", "despensasSinCosto", "despensasApadrinadas"]
+                }
+            ],
+            where: whereClause
+        });
+
+        // 3. Calcular total de despensas por pedido
+        const calendarioFormateado = calendario.map(pedido => {
+            const totalDespensas = pedido.pedidoComunidad
+                ?.reduce((total, pc) => {
+                    return total + 
+                           pc.despensasCosto +
+                           pc.despensasMedioCosto +
+                           pc.despensasSinCosto +
+                           pc.despensasApadrinadas;
+                }, 0) || 0; // Manejo seguro si no hay despensas
+
+            return {
+                fecha: pedido.fechaEntrega,
+                estado: pedido.estado,
+                ruta: pedido.ruta?.nombre || "Sin ruta",
+                totalDespensas: totalDespensas
+            };
+        });
+
+        sendSuccessResponse(res, 200, calendarioFormateado);
+    } catch (error) {
+        logger.error("Error en getCalendario: ", error);
+        sendErrorResponse(res, 500, error.message);
+    }
+};
+
 module.exports = {
     getResumen,
     getReporteRutas,
@@ -1030,5 +1109,6 @@ module.exports = {
     getReporteDespensas,
     getReporteComunidades,
     getReporteApadrinadas,
-    getReporteEconomico
+    getReporteEconomico,
+    getCalendario
 };
