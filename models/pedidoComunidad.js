@@ -8,6 +8,7 @@ const PedidoComunidad = sequelize.define("pedidoComunidad", {
     despensasMedioCosto: DataTypes.INTEGER,
     despensasSinCosto: DataTypes.INTEGER,
     despensasApadrinadas: DataTypes.INTEGER,
+    comite: DataTypes.INTEGER,
     arpilladas: DataTypes.BOOLEAN,
     observaciones: DataTypes.TEXT,
 }, { tableName: "pedidoComunidad" });
