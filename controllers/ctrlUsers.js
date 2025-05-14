@@ -35,7 +35,13 @@ const updateUser = async (req, res) => {
         }
 
         // Check if user exists
-        const user = await Usuario.findByPk(id);
+        const user = await Usuario.findOne({
+            where: {
+                id,
+                activo: true
+            }
+        });
+
         if (!user) {
             logger.warn(`User not found with ID: ${id}`); // Log warning
             return sendErrorResponse(res, 404, "User not found");
@@ -78,32 +84,47 @@ const deleteUser = async (req, res) => {
     try {
         const id = req.params.id;
 
-        // Validate ID
+        // Validar ID
         if (isNaN(id)) {
-            logger.warn(`Invalid ID provided: ${id}`); // Log warning
-            return sendErrorResponse(res, 400, "Invalid ID");
+            logger.warn(`ID inválido proporcionado: ${id}`);
+            return sendErrorResponse(res, 400, "ID inválido");
         }
 
-        // Check if user exists
+        // Buscar usuario
         const user = await Usuario.findByPk(id);
         if (!user) {
-            logger.warn(`User not found with ID: ${id}`); // Log warning
-            return sendErrorResponse(res, 404, "User not found");
+            logger.warn(`Usuario no encontrado con ID: ${id}`);
+            return sendErrorResponse(res, 404, "Usuario no encontrado");
         }
 
-        // Delete user
-        const result = await Usuario.destroy({ where: { id } });
+        // Verificar si es de Dirección
+        if (user.rol === 'Direccion') {
+            logger.warn(`Intento de borrar usuario de Dirección con ID: ${id}`);
+            return sendErrorResponse(res, 403, "No se puede eliminar usuarios de Dirección");
+        }
+
+        // Actualizar campos para borrado lógico
+        const [result] = await Usuario.update(
+            {
+                verificado: false,
+                activo: false
+            },
+            {
+                where: { id },
+                individualHooks: true
+            }
+        );
 
         if (result !== 1) {
-            logger.error(`Failed to delete user with ID: ${id}`); // Log error
-            return sendErrorResponse(res, 500, "Failed to delete user");
+            logger.error(`Error al eliminar usuario con ID: ${id}`);
+            return sendErrorResponse(res, 500, "Error al eliminar usuario");
         }
 
-        logger.info(`User deleted successfully: ${id}`); // Log success
-        return res.status(204).end(); // No content for successful deletion
+        logger.info(`Usuario desactivado exitosamente: ${id}`);
+        return res.status(200).json({ message: "Usuario desactivado correctamente" });
     } catch (e) {
-        logger.error(`Error deleting user: ${e.message}`); // Log error
-        return sendErrorResponse(res, 500, "Internal server error");
+        logger.error(`Error eliminando usuario: ${e.message}`);
+        return sendErrorResponse(res, 500, "Error interno del servidor");
     }
 };
 
@@ -118,7 +139,12 @@ const getUser = async (req, res) => {
             return sendErrorResponse(res, 400, "Invalid ID");
         }
 
-        const user = await Usuario.findByPk(id);
+        const user = await Usuario.findOne({
+            where:{
+                id,
+                activo: true
+            }
+        });
 
         if (!user) {
             logger.warn(`User not found with ID: ${id}`); // Log warning
@@ -141,6 +167,7 @@ const getAllUsers = async (req, res) => {
     try {
         const users = await Usuario.findAll({
             attributes: { exclude: ["password"] }, // Exclude sensitive fields
+            where: { activo: true }
         });
 
         logger.info(`Fetched ${users.length} users`); // Log success
@@ -165,7 +192,10 @@ const verifyUser = async (req, res) => {
         // Update the user's verification status
         const user = await Usuario.update(
             { verificado },
-            { where: { id } }
+            { where: { 
+                id,
+                activo: true
+            } }
         );
 
         if (user[0] === 0) { // No rows updated
@@ -188,7 +218,10 @@ const verifyUser = async (req, res) => {
 const getPendingUsers = async (req, res) => {
     try {
         const users = await Usuario.findAll({
-            where: { verificado: false },
+            where: { 
+                verificado: false,
+                activo: true
+             },
             attributes: { exclude: ["password"] }, // Exclude sensitive data
         });
 
