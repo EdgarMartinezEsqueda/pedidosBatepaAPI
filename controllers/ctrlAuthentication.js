@@ -134,7 +134,13 @@ const requestPasswordReset = async (req, res) => {
     try {
         const { email } = req.body;
         
-        const user = await Usuario.findOne({ where: { email } });
+        const user = await Usuario.findOne({ 
+            where: { 
+                email,
+                activo: true,
+                verificado: true 
+            } 
+        });
 
         if (!user) 
             return sendErrorResponse(res, 404, "Si el email existe, te enviaremos un enlace de recuperación NO JALA");
