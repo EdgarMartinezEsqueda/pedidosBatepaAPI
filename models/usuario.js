@@ -8,6 +8,7 @@ const Usuario = sequelize.define( "usuarios", {
     password: { type: DataTypes.STRING(256), allowNull: false },
     rol: { type: DataTypes.ENUM("Direccion", "Almacen", "Ts", "Coordinadora", "Consejo", "Contabilidad"), default: "Almacen" },
     verificado: { type: DataTypes.BOOLEAN, defaultValue: false },
+    activo: { type: DataTypes.BOOLEAN, defaultValue: true },
     resetPasswordToken: { type: DataTypes.STRING },
     resetPasswordExpires: { type: DataTypes.DATE }
 }, {} );
