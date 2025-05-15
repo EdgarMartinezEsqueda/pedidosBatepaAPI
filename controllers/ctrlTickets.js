@@ -23,7 +23,7 @@ const sendSuccessResponse = (res, statusCode, data) => {
 // POST /tickets - Crear ticket (usuario autenticado)
 const createTicket = async (req, res) => {
     try {
-        const { idUsuario, descripcion, prioridad = 'baja' } = req.body;
+        const { idUsuario, descripcion, prioridad = "baja" } = req.body;
         
         if (!idUsuario || !descripcion) 
             return sendErrorResponse(res, 400, "Faltan campos requeridos");
@@ -33,15 +33,15 @@ const createTicket = async (req, res) => {
         if (!usuario) 
             return sendErrorResponse(res, 404, "Usuario no encontrado");
 
-        const nuevoTicket = await Ticket.create({
+        const nuevoTicket = await Tickets.create({
             idUsuario,
             descripcion,
             prioridad,
-            estatus: 'abierto' // Valor por defecto
+            estatus: "abierto" // Valor por defecto
         });
 
         // Enviar email de confirmación
-        await sendTicketEmail(usuario, nuevoTicket, 'creacion');
+        await sendTicketEmail(usuario, nuevoTicket, "creacion");
 
         logger.info(`Ticket creado: ${nuevoTicket.id}`);
         return sendSuccessResponse(res, 201, nuevoTicket);
@@ -54,18 +54,11 @@ const createTicket = async (req, res) => {
 // GET /tickets - Listar tickets (admin: todos, usuario: solo los suyos)
 const getAllTickets = async (req, res) => {
     try {
-        let whereClause = {};
-        
-        // Si no es admin, filtrar por su usuario
-        if (!req.user.esAdmin) 
-            whereClause.idUsuario = req.user.id;
-
-        const tickets = await Ticket.findAll({
-            where: whereClause,
+        const tickets = await Tickets.findAll({
             include: [{
                 model: Usuario,
-                as: 'usuario',
-                attributes: ['id', 'nombre', 'email']
+                as: "usuario",
+                attributes: ["id", "username", "email"]
             }]
         });
 
@@ -80,11 +73,11 @@ const getAllTickets = async (req, res) => {
 const getTicketById = async (req, res) => {
     try {
         const { id } = req.params;
-        const ticket = await Ticket.findByPk(id, {
+        const ticket = await Tickets.findByPk(id, {
             include: [{
                 model: Usuario,
-                as: 'usuario',
-                attributes: ['id', 'nombre', 'email']
+                as: "usuario",
+                attributes: ["id", "username", "email"]
             }]
         });
 
@@ -92,7 +85,7 @@ const getTicketById = async (req, res) => {
             return sendErrorResponse(res, 404, "Ticket no encontrado");
 
         // Autorización: solo admin o dueño del ticket
-        if (!req.user.esAdmin && ticket.idUsuario !== req.user.id) 
+        if (!req.user.rol === "Direccion" && ticket.idUsuario !== req.user.id) 
             return sendErrorResponse(res, 403, "No autorizado");
 
         return sendSuccessResponse(res, 200, ticket);
@@ -108,17 +101,17 @@ const updateTicket = async (req, res) => {
         const { id } = req.params;
         const { estatus, prioridad } = req.body;
         
-        const ticket = await Ticket.findByPk(id);
+        const ticket = await Tickets.findByPk(id);
 
         if (!ticket) 
             return sendErrorResponse(res, 404, "Ticket no encontrado");
 
         // Validar campos permitidos
         const updates = {};
-        if (estatus && ['abierto', 'en_proceso', 'cerrado', 'cancelado'].includes(estatus)) 
+        if (estatus && ["abierto", "en_proceso", "cerrado", "cancelado"].includes(estatus)) 
             updates.estatus = estatus;
         
-        if (prioridad && ['baja', 'media', 'alta'].includes(prioridad)) 
+        if (prioridad && ["baja", "media", "alta"].includes(prioridad)) 
             updates.prioridad = prioridad;
 
         await ticket.update(updates);
@@ -126,7 +119,7 @@ const updateTicket = async (req, res) => {
         // Notificar al usuario por email
         const usuario = await Usuario.findByPk(ticket.idUsuario);
         
-        await sendTicketEmail(usuario, ticketActualizado, 'actualizacion');
+        await sendTicketEmail(usuario, ticket, "actualizacion");
 
         return sendSuccessResponse(res, 200, ticket);
     } catch (e) {
