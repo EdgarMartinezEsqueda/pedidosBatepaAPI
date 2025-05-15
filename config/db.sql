@@ -83,3 +83,16 @@ CREATE TABLE pedidoComunidad (
     FOREIGN KEY (idComunidad) REFERENCES comunidades(id) ON DELETE CASCADE, -- Borrar comunidad → elimina esta fila
     INDEX idx_pc_comunidad (idComunidad) -- Para búsquedas por comunidad
 );
+
+-- Tabla para el sistema de tickets
+CREATE TABLE tickets (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  idUsuario INT NOT NULL,
+  estatus ENUM('abierto', 'en_proceso', 'cerrado', 'cancelado') DEFAULT 'abierto',
+  prioridad ENUM('baja', 'media', 'alta') DEFAULT 'baja',
+  descripcion TEXT NOT NULL,
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (idUsuario) REFERENCES usuarios(id),
+  INDEX idx_tickets_idUsuario (idUsuario) -- ¡Corregido el typo "idUsario"!
+);
