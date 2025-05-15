@@ -22,6 +22,7 @@ app.use("/comunidades", require("./routes/communities"));
 app.use("/rutas", require("./routes/routes"));
 app.use("/municipios", require("./routes/municipality"));
 app.use("/reportes", require("./routes/reports"));
+app.use("/tickets", require("./routes/tickets"));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
