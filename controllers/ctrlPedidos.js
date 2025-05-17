@@ -135,7 +135,7 @@ const updateOrder = async (req, res) => {
     let transaction;
     try {
         const { id } = req.params;
-        const { fechaEntrega, devoluciones, pedidoComunidad, estado, ...otrosUpdates } = req.body;
+        const { fechaEntrega, devoluciones, pedidoComunidad, estado, horaLlegada, ...otrosUpdates } = req.body;
         
         if (isNaN(id)) return sendErrorResponse(res, 400, "ID inválido");
 
@@ -152,6 +152,7 @@ const updateOrder = async (req, res) => {
         const updateFields = {};
         if (fechaEntrega) updateFields.fechaEntrega = fechaEntrega;
         if (devoluciones !== undefined) updateFields.devoluciones = devoluciones;
+        if (horaLlegada !== undefined) updateFields.horaLlegada = horaLlegada;
         if (estado) updateFields.estado = estado;
 
         await pedido.update(updateFields, { transaction });
