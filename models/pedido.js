@@ -9,6 +9,7 @@ const Pedido = sequelize.define("pedidos", {
     fechaEntrega: DataTypes.DATEONLY,
     estado: { type: DataTypes.ENUM ("pendiente", "finalizado"), defaultValue: "pendiente" },
     devoluciones: DataTypes.INTEGER,
+    horaLlegada: DataTypes.TIME,
 });
 
 module.exports = Pedido;
