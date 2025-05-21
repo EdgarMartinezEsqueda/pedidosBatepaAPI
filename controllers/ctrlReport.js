@@ -23,8 +23,8 @@ const sendSuccessResponse = (res, statusCode, data) => {
 const getResumen = async (req, res) => {
     try {
         // A. Obtener TODOS los pedidos con sus comunidades (últimos 12 meses)
-        const doceMesesAtras = new Date();
-        doceMesesAtras.setMonth(doceMesesAtras.getMonth() - 11);
+        const startOfYear = new Date(new Date().getFullYear(), 0, 1); // 1 de Enero
+        const endOfYear = new Date(new Date().getFullYear(), 11, 31); // 31 de Diciembre
 
         const pedidosCompletos = await Pedido.findAll({
             include: [
@@ -40,7 +40,11 @@ const getResumen = async (req, res) => {
                     }]
                 }
             ],
-            where: { fechaEntrega: { [Op.between]: [doceMesesAtras, new Date()] } },
+            where: { 
+                fechaEntrega: { 
+                    [Op.between]: [startOfYear, endOfYear] 
+                } 
+            }
         });
         
         // B. Procesar data
@@ -104,7 +108,20 @@ const getResumen = async (req, res) => {
                 // Top rutas y devoluciones
                 if (pedido.ruta) {
                     const rutaNombre = pedido.ruta.nombre;
-                    rutas[rutaNombre] = (rutas[rutaNombre] || 0) + 1;
+                    
+                    // Función reutilizable para sumar despensas
+                    const sumarDespensas = (pc) => {
+                        return pc.despensasCosto + pc.despensasMedioCosto 
+                            + pc.despensasSinCosto + pc.despensasApadrinadas;
+                    };
+
+                    // Sumar despensas para esta ruta
+                    const totalDespensas = pedido.pedidoComunidad
+                        .reduce((total, pc) => total + sumarDespensas(pc), 0);
+
+                    rutas[rutaNombre] = (rutas[rutaNombre] || 0) + totalDespensas;
+                    
+                    // Devoluciones se mantiene igual
                     devolucionesRutas[rutaNombre] = (devolucionesRutas[rutaNombre] || 0) + (pedido.devoluciones || 0);
                 }
             });
@@ -132,7 +149,7 @@ const getResumen = async (req, res) => {
                     attributes: ["nombre"],
                     as: "ruta"
                 },
-                {  // ¡Nuevo include para calcular despensas!
+                {
                     model: PedidoComunidad,
                     as: "pedidoComunidad",
                     attributes: ["despensasCosto", "despensasMedioCosto", "despensasSinCosto", "despensasApadrinadas"]
@@ -172,6 +189,10 @@ const getResumen = async (req, res) => {
 
 const getReporteRutas = async (req, res) => {
     try {
+        // Obtener el inicio y fin del año actual
+        const startOfYear = new Date(new Date().getFullYear(), 0, 1); // 1 de Enero
+        const endOfYear = new Date(new Date().getFullYear(), 11, 31); // 31 de Diciembre
+
         // 1. Obtener todas las rutas con sus métricas
         const rutas = await Ruta.findAll({
             as: "rutas",
@@ -193,7 +214,12 @@ const getReporteRutas = async (req, res) => {
                     model: PedidoComunidad,
                     as: "pedidoComunidad",
                     attributes: []
-                }]
+                }],
+                where: { 
+                    fechaEntrega: { 
+                        [Op.between]: [startOfYear, endOfYear] 
+                    } 
+                },
             }],
             group: ["rutas.id"],
             raw: true
@@ -261,6 +287,10 @@ const getReporteRutas = async (req, res) => {
 
 const getReporteTS = async (req, res) => {
     try {
+        // Obtener el inicio y fin del año actual
+        const startOfYear = new Date(new Date().getFullYear(), 0, 1); // 1 de Enero
+        const endOfYear = new Date(new Date().getFullYear(), 11, 31); // 31 de Diciembre
+
         // 1. Obtener métricas base con una sola consulta
         const trabajadores = await Usuario.findAll({
             include: [{
@@ -272,6 +302,11 @@ const getReporteTS = async (req, res) => {
                     as: "pedidoComunidad",
                     attributes: []
                 }],
+                where: { 
+                    fechaEntrega: { 
+                        [Op.between]: [startOfYear, endOfYear] 
+                    } 
+                },
                 required: true
             }],
             attributes: [
@@ -404,6 +439,12 @@ const getReporteDespensas = async (req, res) => {
             const start = new Date(año, mes - 1, 1);
             const end = new Date(año, mes, 0);
             fechaEntrega[Sequelize.Op.between] = [start, end];
+        }
+
+        if(!año){
+            const startOfYear = new Date(new Date().getFullYear(), 0, 1); // 1 de Enero
+            const endOfYear = new Date(new Date().getFullYear(), 11, 31); // 31 de Diciembre
+            fechaEntrega[Sequelize.Op.between] = [startOfYear, endOfYear];
         }
 
         if (Object.keys(fechaEntrega).length > 0) {
@@ -597,6 +638,10 @@ const getReporteDespensas = async (req, res) => {
 
 const getReporteComunidades = async (req, res) => {
     try {
+        // Obtener el inicio y fin del año actual
+        const startOfYear = new Date(new Date().getFullYear(), 0, 1); // 1 de Enero
+        const endOfYear = new Date(new Date().getFullYear(), 11, 31); // 31 de Diciembre
+
         const { comunidadId } = req.query;
 
         // 1. Datos principales de todas las comunidades
@@ -627,7 +672,17 @@ const getReporteComunidades = async (req, res) => {
                     model: PedidoComunidad,
                     as: "pedidoComunidad",
                     attributes: [],
-                    required: false
+                    required: false,
+                    include: [{
+                        model: Pedido,
+                        as: "pedido",
+                        attributes: [],
+                        where: {  // <- Filtro por año
+                            fechaEntrega: { 
+                                [Op.between]: [startOfYear, endOfYear] 
+                            }
+                        }
+                    }]
                 }
             ],
             group: ["comunidades.id", "municipio.id", "municipio.nombre"],
@@ -866,6 +921,11 @@ const getReporteEconomico = async (req, res) => {
             const start = new Date(año, mes - 1, 1);
             const end = new Date(año, mes, 0);
             wherePedido.fechaEntrega = { [Op.between]: [start, end] };
+        }
+        if(!año){
+            const startOfYear = new Date(new Date().getFullYear(), 0, 1); // 1 de Enero
+            const endOfYear = new Date(new Date().getFullYear(), 11, 31); // 31 de Diciembre
+            wherePedido.fechaEntrega = { [Op.between]: [startOfYear, endOfYear] };
         }
 
         // Filtros adicionales
