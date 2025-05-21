@@ -733,6 +733,10 @@ const getReporteApadrinadas = async (req, res) => {
         doceMesesAtras.setMonth(doceMesesAtras.getMonth() - 11);
 
         // 1. Datos mensuales últimos 12 meses (optimizado con filtro de fecha)
+        // Obtener el inicio y fin del año actual
+        const startOfYear = new Date(new Date().getFullYear(), 0, 1); // 1ero de enero
+        const endOfYear = new Date(new Date().getFullYear(), 11, 31); // 31 de diciembre
+
         const monthlyData = await PedidoComunidad.findAll({
             attributes: [
                 [Sequelize.fn("DATE_FORMAT", Sequelize.col("pedido.fechaEntrega"), "%Y-%m"), "mes"],
@@ -745,13 +749,17 @@ const getReporteApadrinadas = async (req, res) => {
                 model: Pedido,
                 as: "pedido",
                 attributes: [],
-                where: { fechaEntrega: { [Op.between]: [doceMesesAtras, new Date()] } },
+                where: { 
+                    fechaEntrega: { 
+                        [Op.between]: [startOfYear, endOfYear] // Filtra solo el año actual
+                    } 
+                },
                 required: true
             }],
-            group: [Sequelize.fn("DATE_FORMAT", Sequelize.col("pedido.fechaEntrega"), "%Y-%m")],
+            group: [Sequelize.fn("DATE_FORMAT", Sequelize.col("pedido.fechaEntrega"), "%Y-%m")], // Agrupa por mes
             raw: true
         });
-
+        
         // 2. Top TS y Comunidades en una sola consulta usando Promise.all
         const [topTS, topComunidades] = await Promise.all([
             Usuario.findAll({
