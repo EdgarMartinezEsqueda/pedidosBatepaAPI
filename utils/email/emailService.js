@@ -5,6 +5,7 @@ const { generatePasswordResetTemplate } = require("./templates/resetPassword")
 const { generateTicketTemplate } = require("./templates/ticketEmail")
 
 const resend = new Resend(process.env.TOKEN_RESEND);
+const emailSupport = process.env.EMAIL_SUPPORT;
 
 const sendVerificationEmail = async (user) => {
     try {
@@ -42,18 +43,32 @@ const sendPasswordResetEmail = async (user, token) => {
     }
 };
 
-const sendTicketEmail = async (user, ticket, actionType = 'actualizacion') => {
+const sendTicketEmail = async (user, ticket, actionType = "actualizacion") => {
     try {
         const emailHTML = generateTicketTemplate(ticket, actionType);
+
+        // Set para evitar duplicados, si en dado caso el mismo usuario de soporte envía tickets
+        const cco = new Set();
+
+        // Solo agregar el correo de soporte si no es el mismo que el del usuario
+        if (user.email !== emailSupport)
+            cco.add(emailSupport);
         
-        await resend.emails.send({
+        const emailOptions = {
             from: "notificaciones@bamxtepatitlan.org",
             to: user.email,
-            subject: actionType === 'creacion' 
+            subject: actionType === "creacion" 
                 ? "✅ Ticket creado - BAMX Tepatitlán" 
                 : "🔄 Ticket actualizado - BAMX Tepatitlán",
             html: emailHTML
-        });
+        };
+
+        // Enviar copia oculta a soporte si es necesario
+        if( cco.size > 0 )
+            emailOptions.bcc = Array.from(cco);
+
+        // Enviar el email
+        await resend.emails.send(emailOptions);
         
         logger.info(`Email de ticket enviado a: ${user.email}`);
     } catch (error) {
