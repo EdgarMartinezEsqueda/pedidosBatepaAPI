@@ -99,7 +99,7 @@ const getTicketById = async (req, res) => {
 const updateTicket = async (req, res) => {
     try {
         const { id } = req.params;
-        const { estatus, prioridad } = req.body;
+        const { estatus, prioridad, comentarios } = req.body;
         
         const ticket = await Tickets.findByPk(id);
 
@@ -113,6 +113,9 @@ const updateTicket = async (req, res) => {
         
         if (prioridad && ["baja", "media", "alta"].includes(prioridad)) 
             updates.prioridad = prioridad;
+
+        if (comentarios)
+            updates.comentarios = comentarios;
 
         await ticket.update(updates);
         
