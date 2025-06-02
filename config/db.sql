@@ -92,6 +92,7 @@ CREATE TABLE tickets (
   estatus ENUM('abierto', 'en_proceso', 'cerrado', 'cancelado') DEFAULT 'abierto',
   prioridad ENUM('baja', 'media', 'alta') DEFAULT 'baja',
   descripcion TEXT NOT NULL,
+  comentarios TEXT,
   createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
   updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (idUsuario) REFERENCES usuarios(id),
