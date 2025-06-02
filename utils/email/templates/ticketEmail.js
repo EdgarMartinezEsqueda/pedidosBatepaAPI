@@ -59,6 +59,12 @@ const generateTicketTemplate = (ticket, actionType) => {
                             <td style="padding: 8px 0;">Descripción</td>
                             <td style="padding: 8px 0;">${ticket.descripcion}</td>
                             </tr>
+                            ${ ticket.comentarios 
+                              ? `<tr>
+                                  <td style="padding: 8px 0;">Comentarios finales</td>
+                                  <td style="padding: 8px 0;">${ticket.comentarios}</td>
+                                </tr>` 
+                              : ''}
                         </table>
                         </td>
                     </tr>
