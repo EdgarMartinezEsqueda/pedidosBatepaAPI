@@ -922,9 +922,9 @@ const getReporteEconomico = async (req, res) => {
             const end = new Date(año, mes, 0);
             wherePedido.fechaEntrega = { [Op.between]: [start, end] };
         }
-        if(!año){
-            const startOfYear = new Date(new Date().getFullYear(), 0, 1); // 1 de Enero
-            const endOfYear = new Date(new Date().getFullYear(), 11, 31); // 31 de Diciembre
+        if (!año) {
+            const startOfYear = new Date(new Date().getFullYear(), 0, 1);
+            const endOfYear = new Date(new Date().getFullYear(), 11, 31);
             wherePedido.fechaEntrega = { [Op.between]: [startOfYear, endOfYear] };
         }
 
@@ -961,18 +961,25 @@ const getReporteEconomico = async (req, res) => {
             ]
         });
 
-        // Procesamiento de datos (cambia la estructura de 'metrics')
+        // Procesamiento de datos
         let metrics = {
             evolucionMensual: {},
             comunidades: {},
             municipios: {},
             rutas: {},
             resumenGlobal: {
-                costoTotal: 0,          // Nuevo campo
-                ingresosRecaudados: 0,  // Antes 'ingresos'
-                despensasSubsidiadas: 0,// Antes 'costosBanco'
+                costoTotal: 0,
+                ingresosRecaudados: 0,
+                despensasSubsidiadas: 0,
                 balanceNeto: 0,
+                totalDespensasEntregadas: 0, // Nuevo campo: total de despensas
                 detalle: {
+                    costoCompleto: 0,
+                    medioCosto: 0,
+                    sinCosto: 0,
+                    apadrinadas: 0
+                },
+                detalleConteo: { // Nuevo desglose por tipo (conteo)
                     costoCompleto: 0,
                     medioCosto: 0,
                     sinCosto: 0,
@@ -985,18 +992,22 @@ const getReporteEconomico = async (req, res) => {
             const costo = pc.comunidad.costoPaquete;
             const mesKey = new Date(pc.pedido.fechaEntrega).toISOString().slice(0, 7);
             
-            // Cálculos económicos (se mantienen igual)
+            // Cálculos económicos
             const ingresosCosto = pc.despensasCosto * costo;
             const ingresosMedio = pc.despensasMedioCosto * (costo / 2);
             const costoSin = pc.despensasSinCosto * costo;
             const costoApadrinadas = pc.despensasApadrinadas * costo;
 
-            // Nuevas variables agrupadas
+            // Variables agrupadas
             const ingresosRecaudados = ingresosCosto + ingresosMedio;
             const despensasSubsidiadas = costoSin + costoApadrinadas;
             const costoTotal = ingresosRecaudados + despensasSubsidiadas;
+            
+            // Calcular total de despensas para este pedidoComunidad
+            const totalDespensas = pc.despensasCosto + pc.despensasMedioCosto + 
+                                  pc.despensasSinCosto + pc.despensasApadrinadas;
 
-            // Actualizar métricas globales (nueva estructura)
+            // Actualizar métricas globales
             metrics.resumenGlobal.costoTotal += costoTotal;
             metrics.resumenGlobal.ingresosRecaudados += ingresosRecaudados;
             metrics.resumenGlobal.despensasSubsidiadas += despensasSubsidiadas;
@@ -1005,68 +1016,91 @@ const getReporteEconomico = async (req, res) => {
             metrics.resumenGlobal.detalle.sinCosto += costoSin;
             metrics.resumenGlobal.detalle.apadrinadas += costoApadrinadas;
             
-            // Evolución mensual (nueva estructura)
+            // Actualizar conteo de despensas por tipo
+            metrics.resumenGlobal.detalleConteo.costoCompleto += pc.despensasCosto;
+            metrics.resumenGlobal.detalleConteo.medioCosto += pc.despensasMedioCosto;
+            metrics.resumenGlobal.detalleConteo.sinCosto += pc.despensasSinCosto;
+            metrics.resumenGlobal.detalleConteo.apadrinadas += pc.despensasApadrinadas;
+            
+            // Actualizar total de despensas
+            metrics.resumenGlobal.totalDespensasEntregadas += totalDespensas;
+            
+            // Evolución mensual
             if (!metrics.evolucionMensual[mesKey]) {
                 metrics.evolucionMensual[mesKey] = {
                     costoTotal: 0,
                     ingresosRecaudados: 0,
-                    despensasSubsidiadas: 0
+                    despensasSubsidiadas: 0,
+                    totalDespensasEntregadas: 0
                 };
             }
             metrics.evolucionMensual[mesKey].costoTotal += costoTotal;
             metrics.evolucionMensual[mesKey].ingresosRecaudados += ingresosRecaudados;
             metrics.evolucionMensual[mesKey].despensasSubsidiadas += despensasSubsidiadas;
+            metrics.evolucionMensual[mesKey].totalDespensasEntregadas += totalDespensas;
             
-            // Por comunidad (nueva estructura)
+            // Por comunidad
             const comunidadKey = pc.comunidad.nombre;
             if (!metrics.comunidades[comunidadKey]) {
                 metrics.comunidades[comunidadKey] = {
                     costoTotal: 0,
                     ingresosRecaudados: 0,
                     despensasSubsidiadas: 0,
+                    totalDespensasEntregadas: 0,
                     municipio: pc.comunidad.municipio.nombre
                 };
             }
             metrics.comunidades[comunidadKey].costoTotal += costoTotal;
             metrics.comunidades[comunidadKey].ingresosRecaudados += ingresosRecaudados;
             metrics.comunidades[comunidadKey].despensasSubsidiadas += despensasSubsidiadas;
+            metrics.comunidades[comunidadKey].totalDespensasEntregadas += totalDespensas;
             
-            // Por municipio (nueva estructura)
+            // Por municipio
             const municipioKey = pc.comunidad.municipio.nombre;
             if (!metrics.municipios[municipioKey]) {
                 metrics.municipios[municipioKey] = { 
                     costoTotal: 0,
                     ingresosRecaudados: 0,
-                    despensasSubsidiadas: 0 
+                    despensasSubsidiadas: 0,
+                    totalDespensasEntregadas: 0
                 };
             }
             metrics.municipios[municipioKey].costoTotal += costoTotal;
             metrics.municipios[municipioKey].ingresosRecaudados += ingresosRecaudados;
             metrics.municipios[municipioKey].despensasSubsidiadas += despensasSubsidiadas;
+            metrics.municipios[municipioKey].totalDespensasEntregadas += totalDespensas;
             
-            // Por ruta (nueva estructura)
+            // Por ruta
             const rutaKey = pc.pedido.ruta?.nombre || "Sin ruta";
             if (!metrics.rutas[rutaKey]) {
                 metrics.rutas[rutaKey] = { 
                     costoTotal: 0,
                     ingresosRecaudados: 0,
-                    despensasSubsidiadas: 0 
+                    despensasSubsidiadas: 0,
+                    totalDespensasEntregadas: 0
                 };
             }
             metrics.rutas[rutaKey].costoTotal += costoTotal;
             metrics.rutas[rutaKey].ingresosRecaudados += ingresosRecaudados;
             metrics.rutas[rutaKey].despensasSubsidiadas += despensasSubsidiadas;
+            metrics.rutas[rutaKey].totalDespensasEntregadas += totalDespensas;
         });
 
         // Calcular balance neto global
         metrics.resumenGlobal.balanceNeto = 
             metrics.resumenGlobal.ingresosRecaudados - metrics.resumenGlobal.despensasSubsidiadas;
+        
+        // Calcular promedio de ingreso por despensa
+        metrics.resumenGlobal.promedioIngresoPorDespensa = 
+            metrics.resumenGlobal.totalDespensasEntregadas > 0 
+                ? metrics.resumenGlobal.ingresosRecaudados / metrics.resumenGlobal.totalDespensasEntregadas 
+                : 0;
 
-        // Formatear respuesta (actualizado para nueva estructura)
+        // Formatear respuesta final
         const response = {
             resumenGlobal: {
                 ...metrics.resumenGlobal,
-                balanceNeto: metrics.resumenGlobal.balanceNeto
+                promedioIngresoPorDespensa: metrics.resumenGlobal.promedioIngresoPorDespensa
             },
             evolucionMensual: Object.entries(metrics.evolucionMensual)
                 .map(([mes, data]) => ({
@@ -1074,40 +1108,61 @@ const getReporteEconomico = async (req, res) => {
                     costoTotal: data.costoTotal,
                     ingresosRecaudados: data.ingresosRecaudados,
                     despensasSubsidiadas: data.despensasSubsidiadas,
+                    totalDespensasEntregadas: data.totalDespensasEntregadas,
                     balance: data.ingresosRecaudados - data.despensasSubsidiadas
                 }))
                 .sort((a, b) => a.mes.localeCompare(b.mes)),
             distribucionComunidades: Object.entries(metrics.comunidades)
-                .map(([nombre, data]) => ({
-                    nombre,
-                    costoTotal: data.costoTotal,
-                    ingresosRecaudados: data.ingresosRecaudados,
-                    despensasSubsidiadas: data.despensasSubsidiadas,
-                    municipio: data.municipio,
-                    balance: data.ingresosRecaudados - data.despensasSubsidiadas
-                }))
+                .map(([nombre, data]) => {
+                    const porcentajeParticipacion = metrics.resumenGlobal.costoTotal > 0
+                        ? (data.costoTotal / metrics.resumenGlobal.costoTotal) * 100
+                        : 0;
+                    return {
+                        nombre,
+                        costoTotal: data.costoTotal,
+                        ingresosRecaudados: data.ingresosRecaudados,
+                        despensasSubsidiadas: data.despensasSubsidiadas,
+                        totalDespensasEntregadas: data.totalDespensasEntregadas,
+                        municipio: data.municipio,
+                        balance: data.ingresosRecaudados - data.despensasSubsidiadas,
+                        porcentajeParticipacion
+                    };
+                })
                 .sort((a, b) => b.balance - a.balance),
             distribucionMunicipios: Object.entries(metrics.municipios)
-                .map(([nombre, data]) => ({
-                    nombre,
-                    costoTotal: data.costoTotal,
-                    ingresosRecaudados: data.ingresosRecaudados,
-                    despensasSubsidiadas: data.despensasSubsidiadas,
-                    balance: data.ingresosRecaudados - data.despensasSubsidiadas
-                }))
+                .map(([nombre, data]) => {
+                    const porcentajeParticipacion = metrics.resumenGlobal.costoTotal > 0
+                        ? (data.costoTotal / metrics.resumenGlobal.costoTotal) * 100
+                        : 0;
+                    return {
+                        nombre,
+                        costoTotal: data.costoTotal,
+                        ingresosRecaudados: data.ingresosRecaudados,
+                        despensasSubsidiadas: data.despensasSubsidiadas,
+                        totalDespensasEntregadas: data.totalDespensasEntregadas,
+                        balance: data.ingresosRecaudados - data.despensasSubsidiadas,
+                        porcentajeParticipacion
+                    };
+                })
                 .sort((a, b) => b.balance - a.balance),
             distribucionRutas: Object.entries(metrics.rutas)
-                .map(([nombre, data]) => ({
-                    nombre,
-                    costoTotal: data.costoTotal,
-                    ingresosRecaudados: data.ingresosRecaudados,
-                    despensasSubsidiadas: data.despensasSubsidiadas,
-                    balance: data.ingresosRecaudados - data.despensasSubsidiadas
-                }))
+                .map(([nombre, data]) => {
+                    const porcentajeParticipacion = metrics.resumenGlobal.costoTotal > 0
+                        ? (data.costoTotal / metrics.resumenGlobal.costoTotal) * 100
+                        : 0;
+                    return {
+                        nombre,
+                        costoTotal: data.costoTotal,
+                        ingresosRecaudados: data.ingresosRecaudados,
+                        despensasSubsidiadas: data.despensasSubsidiadas,
+                        totalDespensasEntregadas: data.totalDespensasEntregadas,
+                        balance: data.ingresosRecaudados - data.despensasSubsidiadas,
+                        porcentajeParticipacion
+                    };
+                })
                 .sort((a, b) => b.balance - a.balance)
         };
         sendSuccessResponse(res, 200, response);
-
     } catch (error) {
         logger.error("Error en getReporteEconomico: ", error);
         sendErrorResponse(res, 500, error.message);
