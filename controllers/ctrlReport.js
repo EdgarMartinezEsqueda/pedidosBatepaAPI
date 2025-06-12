@@ -1183,7 +1183,7 @@ const getCalendario = async (req, res) => {
 
         // 2. Consulta principal con total de despensas
         const calendario = await Pedido.findAll({
-            attributes: ["fechaEntrega", "estado"],
+            attributes: ["fechaEntrega", "estado", "id"],
             include: [
                 {
                     model: Ruta,
@@ -1211,6 +1211,7 @@ const getCalendario = async (req, res) => {
                 }, 0) || 0; // Manejo seguro si no hay despensas
 
             return {
+                id: pedido.id,
                 fecha: pedido.fechaEntrega,
                 estado: pedido.estado,
                 ruta: pedido.ruta?.nombre || "Sin ruta",
