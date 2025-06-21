@@ -57,6 +57,8 @@ CREATE TABLE pedidos (
     estado ENUM('pendiente', 'finalizado') DEFAULT 'pendiente',
     devoluciones INT,
     horaLlegada TIME,
+    cobranzaGenerada BOOLEAN DEFAULT FALSE,
+    urlCobranza VARCHAR(255),
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (idTs) REFERENCES usuarios(id) ON DELETE SET NULL, -- Borra usuario → pedido queda sin Ts
