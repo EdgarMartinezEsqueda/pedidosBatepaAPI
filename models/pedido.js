@@ -10,6 +10,8 @@ const Pedido = sequelize.define("pedidos", {
     estado: { type: DataTypes.ENUM ("pendiente", "finalizado"), defaultValue: "pendiente" },
     devoluciones: DataTypes.INTEGER,
     horaLlegada: DataTypes.TIME,
+    cobranzaGenerada: { type: DataTypes.BOOLEAN, defaultValue: false },
+    urlCobranza: { type: DataTypes.STRING, allowNull: true },
 });
 
 module.exports = Pedido;
