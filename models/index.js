@@ -8,6 +8,7 @@ const Ruta = require("./ruta");
 const Usuario = require("./usuario");
 const Municipio = require("./municipio");
 const Tickets = require("./tickets");
+const Cobranza = require("./cobranzas");
 
 // Define relationships
 
@@ -40,6 +41,13 @@ PedidoComunidad.belongsTo(Comunidad, { foreignKey: "idComunidad", as: "comunidad
 // Relacion para la tabla tabla tickets
 Tickets.belongsTo(Usuario, { foreignKey: "idUsuario" });
 
+// Pedido tiene muchas Cobranzas
+Pedido.hasMany(Cobranza, { foreignKey: "idPedido", as: "cobranzas" });
+Cobranza.belongsTo(Pedido, { foreignKey: "idPedido", as: "pedido" });
+// Usuario genera muchas Cobranzas
+Usuario.hasMany(Cobranza, { foreignKey: "generadoPor", as: "cobranzasGeneradas" });
+Cobranza.belongsTo(Usuario, { foreignKey: "generadoPor", as: "usuario" });
+
 // Export models
 module.exports = {
     sequelize,
@@ -49,5 +57,6 @@ module.exports = {
     Usuario,
     PedidoComunidad,
     Municipio,
-    Tickets
+    Tickets,
+    Cobranza
 };
