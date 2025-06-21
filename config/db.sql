@@ -87,14 +87,26 @@ CREATE TABLE pedidoComunidad (
 
 -- Tabla para el sistema de tickets
 CREATE TABLE tickets (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  idUsuario INT NOT NULL,
-  estatus ENUM('abierto', 'en_proceso', 'cerrado', 'cancelado') DEFAULT 'abierto',
-  prioridad ENUM('baja', 'media', 'alta') DEFAULT 'baja',
-  descripcion TEXT NOT NULL,
-  comentarios TEXT,
-  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (idUsuario) REFERENCES usuarios(id),
-  INDEX idx_tickets_idUsuario (idUsuario) -- ¡Corregido el typo "idUsario"!
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    idUsuario INT NOT NULL,
+    estatus ENUM('abierto', 'en_proceso', 'cerrado', 'cancelado') DEFAULT 'abierto',
+    prioridad ENUM('baja', 'media', 'alta') DEFAULT 'baja',
+    descripcion TEXT NOT NULL,
+    comentarios TEXT,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (idUsuario) REFERENCES usuarios(id),
+    INDEX idx_tickets_idUsuario (idUsuario) -- ¡Corregido el typo "idUsario"!
+);
+
+CREATE TABLE cobranzas (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    idPedido BIGINT NOT NULL,
+    urlArchivo VARCHAR(255) NOT NULL,
+    generadoPor INT, -- usuario que generó el archivo
+    fechaGeneracion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (idPedido) REFERENCES pedidos(id) ON DELETE CASCADE,
+    FOREIGN KEY (generadoPor) REFERENCES usuarios(id) ON DELETE SET NULL
 );
