@@ -106,7 +106,7 @@ const getOrder = async (req, res) => {
                     include: [
                         {
                             model: Comunidad,
-                            attributes: ["nombre", "jefa", "contacto"],
+                            attributes: ["nombre", "jefa", "contacto", "costoPaquete"],
                             include: [
                                 {
                                     model: Municipio,
@@ -123,7 +123,32 @@ const getOrder = async (req, res) => {
 
         if (!pedido) 
             return sendErrorResponse(res, 404, "Order not found");
-        return sendSuccessResponse(res, 200, pedido);
+
+        // Convertir a objeto plano para manipulación
+        const pedidoPlain = pedido.toJSON();
+        
+        // Calcular el valor total del pedido
+        let total = 0;
+        if (pedidoPlain.pedidoComunidad && pedidoPlain.pedidoComunidad.length > 0) {
+            pedidoPlain.pedidoComunidad.forEach(item => {
+                const costo = item.comunidad?.costoPaquete || 170.00; // Default 170.00 si no existe
+                
+                // Asegurar que los valores sean numéricos
+                const completo = Number(item.despensasCosto) || 0;
+                const medio = Number(item.despensasMedioCosto) || 0;
+                
+                // Cálculo: completo * costo + medio * (costo / 2)
+                total += (completo * costo) + (medio * (costo / 2));
+            });
+        }
+        
+        // Redondear a 2 decimales
+        total = Math.round(total * 100) / 100;
+        
+        // Agregar el total al objeto de respuesta
+        pedidoPlain.total = total;
+        
+        return sendSuccessResponse(res, 200, pedidoPlain);
     } catch (e) {
         logger.error(`Error fetching order: ${e.message}`);
         return sendErrorResponse(res, 500, "Internal server error");
