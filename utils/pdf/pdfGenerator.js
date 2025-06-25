@@ -16,14 +16,14 @@ module.exports = async (pedido, datosAdicionales) => {
         // Primera copia
         ...buildHeader(pedido),
         buildCommunityTable(pedido),
-        buildExtrasSection(datosAdicionales, pedido),
+        buildExtrasSection(datosAdicionales),
         buildTotalRecuperacion(pedido, datosAdicionales),
         { canvas: [ { type: "line", x1: 0, y1: 0, x2: 515, y2: 0, dash: { length: 5 } } ], margin: [0, 0, 0, 2] },
       
         // Segunda copia
         ...buildHeader(pedido),
         buildCommunityTable(pedido),
-        buildExtrasSection(datosAdicionales, pedido),
+        buildExtrasSection(datosAdicionales),
         buildTotalRecuperacion(pedido, datosAdicionales),
         { canvas: [ { type: "line", x1: 0, y1: 0, x2: 515, y2: 0, dash: { length: 5 } } ], margin: [0, 0, 0, 2] },
       
@@ -69,7 +69,7 @@ function buildHeader(pedido) {
           body: [[
             { text: `TS: ${pedido.usuario.username || "N/A"}`, style: "cellCenter" },
             { text: `RUTA: ${pedido.ruta.nombre || "N/A"}`, style: "cellCenter" },
-            { text: `FECHA: ${pedido.fechaEntrega}`, style: "cellCenter" }
+            { text: `FECHA DE ENTREGA: ${pedido.fechaEntrega}`, style: "cellCenter" }
           ]]
         },
         layout: "noBorders",
@@ -147,20 +147,18 @@ function buildCommunityTable(pedido) {
 }
 
 // TABLA EXTRAS (Arpillas + Excedentes)
-function buildExtrasSection(datosAdicionales, pedido) {
-  const totalArpillas = /*datosAdicionales.arpillasCantidad * */ datosAdicionales.arpillasImporte;
-  const totalExcedentes = /*datosAdicionales.excedentesCantidad * */ datosAdicionales.excedentesImporte;
-  const totalDespensas = calcularTotal(pedido.pedidoComunidad);
-  const totalGeneral = totalDespensas + totalArpillas + totalExcedentes;
+function buildExtrasSection(datosAdicionales) {
+  const totalArpillas = datosAdicionales.arpillasImporte;
+  const totalExcedentes = datosAdicionales.excedentesImporte;
 
   return {
     table: {
       widths: ["*", "auto", "auto"],
       body: [
         [{ text: "EXTRAS", colSpan: 3, style: "tableHeader" }, {}, {}],
-        [ { text: "CONCEPTO", style: "tableHeader" }, { text: "CANTIDAD", style: "tableHeader" }, { text: "IMPORTE", style: "tableHeader" } ],
+        [ { text: "CONCEPTO", style: "tableHeader" }, { text: "DETALLE", style: "tableHeader" }, { text: "IMPORTE", style: "tableHeader" } ],
         [ { text: "ARPILLAS", style: "cellCenter" }, { text: datosAdicionales.arpillasCantidad.toString(), style: "cellCenter" }, { text: `$${totalArpillas.toFixed(2)}`, style: "cellCenter" } ],
-        [ { text: "EXCEDENTES", style: "cellCenter" }, { text: datosAdicionales.excedentesCantidad.toString(), style: "cellCenter" }, { text: `$${totalExcedentes.toFixed(2)}`, style: "cellCenter" } ]
+        [ { text: "EXCEDENTES", style: "cellCenter" }, { text: datosAdicionales.excedentes, style: "cellCenter" }, { text: `$${totalExcedentes.toFixed(2)}`, style: "cellCenter" } ]
       ]
     },
     layout: {
