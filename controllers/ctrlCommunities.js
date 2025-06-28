@@ -1,6 +1,6 @@
 const { Comunidad, Ruta, Municipio } = require("../models/index");
 const logger = require("../utils/logger");
-const { Sequelize } = require("sequelize");
+const { Sequelize, Op } = require("sequelize");
 
 // Utility functions for responses
 const sendErrorResponse = (res, statusCode, message) => {
@@ -27,7 +27,7 @@ const createCommunity = async (req, res) => {
         if (!nombre || !idRuta || !idMunicipio) 
             return sendErrorResponse(res, 400, "Missing or invalid fields");
 
-        // Create the order
+        // Create the community
         const community = await Comunidad.create({
             nombre,
             idMunicipio,
@@ -37,30 +37,72 @@ const createCommunity = async (req, res) => {
             idRuta
         });
 
-        // Return the created order
+        // Return the created community
         logger.info(`Comunidad successfully registered: ${community.dataValues.id}`);
         return sendSuccessResponse(res, 201, community);
     } catch (e) {
         logger.error(`Error creating comunidad: ${e.message}`);
         return sendErrorResponse(res, 500, "Internal server error");
     }
-}
+};
 
 const getAllCommunities = async (req, res) => {
     try {
-        const comunidades = await Comunidad.findAll({
-          attributes: ["id", "nombre", "jefa", "contacto", "direccion", "idRuta",
-            [Sequelize.col("ruta.nombre"), "nombreRuta"],
-            [Sequelize.col("municipio.nombre"), "nombreMunicipio"]
-          ],
-          include: [
-            { model: Ruta, as: "ruta", attributes: [] },
-            { model: Municipio, as: "municipio", attributes: [] }
-          ],
-          distinct: true
+        const page = parseInt(req.query.page) || 1;
+        const pageSize = parseInt(req.query.pageSize) || 10;
+        const offset = (page - 1) * pageSize;
+
+        // Get filters
+        const comunidadesFilter = req.query.comunidades ? req.query.comunidades.split(',') : [];
+        const rutasFilter = req.query.rutas ? req.query.rutas.split(',') : [];
+        const municipiosFilter = req.query.municipios ? req.query.municipios.split(',') : [];
+
+        // Build WHERE conditions
+        const where = {};
+        const include = [
+            { model: Ruta, as: "ruta", attributes: [], required: false },
+            { model: Municipio, as: "municipio", attributes: [], required: false }
+        ];
+
+        if (comunidadesFilter.length > 0) 
+            where.nombre = { [Op.in]: comunidadesFilter };
+
+        // Filtrar por rutas usando la relación
+        if (rutasFilter.length > 0) {
+            where['$ruta.nombre$'] = { [Op.in]: rutasFilter };
+            include[0].required = true;
+        }
+
+        // Filtrar por municipios usando la relación
+        if (municipiosFilter.length > 0) {
+            where['$municipio.nombre$'] = { [Op.in]: municipiosFilter };
+            include[1].required = true;
+        }
+
+        // Consulta paginada
+        const { count, rows } = await Comunidad.findAndCountAll({
+            where,
+            include,
+            attributes: [
+                "id", 
+                "nombre", 
+                "jefa", 
+                "contacto", 
+                "direccion", 
+                "idRuta",
+                [Sequelize.col("ruta.nombre"), "nombreRuta"],
+                [Sequelize.col("municipio.nombre"), "nombreMunicipio"]
+            ],
+            distinct: true,
+            limit: pageSize,
+            offset: offset
         });
-    
-        return sendSuccessResponse(res, 200, comunidades);
+
+        return sendSuccessResponse(res, 200, {
+            communities: rows,
+            total: count
+        });
+
     } catch (e) {
         logger.error(`Error fetching communities: ${e.message}`);
         return sendErrorResponse(res, 500, "Internal server error");
@@ -79,7 +121,7 @@ const getCommunitiesByCity = async (req, res) => {
         logger.error(`Error fetching all communities for City: ${municipio}\n${e.message}`); // Log error
         return sendErrorResponse(res, 500, "Internal server error");
     }
-}
+};
 
 const getCommunitiesByRoute = async (req, res) => {
     try {
@@ -91,12 +133,12 @@ const getCommunitiesByRoute = async (req, res) => {
                 "jefa",
                 "contacto",
                 "direccion",
-                [Sequelize.col("municipio.nombre"), "nombreMunicipio"] // Alias en minúsculas (si aplica)
+                [Sequelize.col("municipio.nombre"), "nombreMunicipio"]
             ],
             include: [
                 {
                     model: Municipio,
-                    as: "municipio", // Asegúrate que coincida con el alias de la asociación
+                    as: "municipio",
                     attributes: [],
                     required: true
                 }
@@ -109,7 +151,7 @@ const getCommunitiesByRoute = async (req, res) => {
         logger.error(`Error fetching all communities for Route: ${req.params.ruta}\n${e.message}`); // Log error
         return sendErrorResponse(res, 500, "Internal server error");
     }
-}
+};
 
 const getCommunity = async (req, res) => {
     try {
@@ -134,7 +176,7 @@ const getCommunity = async (req, res) => {
         logger.error(`Error fetching community: ${e.message}`); // Log error
         return sendErrorResponse(res, 500, "Internal server error");
     }
-}
+};
 
 const updateCommunity = async (req, res) => {
     try {
@@ -168,7 +210,7 @@ const updateCommunity = async (req, res) => {
         logger.error(`Error updating community: ${e.message}`); // Log error
         return sendErrorResponse(res, 500, "Internal server error");
     }
-}
+};
 
 const deleteCommunity = async (req, res) => {
     try {
@@ -201,7 +243,7 @@ const deleteCommunity = async (req, res) => {
         logger.error(`Error deleting community: ${e.message}`); // Log error
         return sendErrorResponse(res, 500, "Internal server error");
     }
-}
+};
 
 module.exports= {
     createCommunity,
@@ -211,4 +253,4 @@ module.exports= {
     getCommunitiesByRoute,
     updateCommunity,
     deleteCommunity
-}
+};

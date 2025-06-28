@@ -62,24 +62,76 @@ const createOrder = async (req, res) => {
 // Fetch all orders
 const getAllOrders = async (req, res) => {
     try {
-        const pedidos = await Pedido.findAll( {
-            include: [
-                {
-                    model: Usuario,  // Modelo de Usuario
-                    attributes: ["username"],  // Solo el campo nombre del usuario
-                    as: "usuario"  // Alias para el modelo de Usuario
-                },
-                {
-                    model: Ruta,  // Modelo de Ruta
-                    attributes: ["nombre"],  // Solo el campo nombre de la ruta
-                    as: "ruta"  // Alias para el modelo de Ruta
-                } ],
-            order: [["id", "DESC" ]], // Obtener los pedidos mas recientes al inicio
-        } );
+        // Parámetros de paginación
+        const page = parseInt(req.query.page) || 1;
+        const pageSize = parseInt(req.query.pageSize) || 10;
+        const offset = (page - 1) * pageSize;
 
-        return sendSuccessResponse(res, 200, pedidos);
+        // Filtros específicos para pedidos
+        const trabajadoresFilter = req.query.trabajadores ? req.query.trabajadores.split(',') : [];
+        const rutasFilter = req.query.rutas ? req.query.rutas.split(',') : [];
+        const estatusFilter = req.query.estatus ? req.query.estatus.split(',') : [];
+        const fechaInicio = req.query.fechaInicio; // Formato YYYY-MM-DD
+        const fechaFin = req.query.fechaFin; // Formato YYYY-MM-DD
+
+        // Construcción del WHERE
+        const where = {};
+        const include = [
+            { 
+                model: Usuario,
+                as: "usuario",
+                attributes: ["username"],
+                required: false
+            },
+            { 
+                model: Ruta,
+                as: "ruta",
+                attributes: ["nombre"],
+                required: false
+            }
+        ];
+
+        // Aplicar filtros
+        if (trabajadoresFilter.length > 0) {
+            where['$usuario.username$'] = { [Op.in]: trabajadoresFilter };
+            include[0].required = true; // Hacer INNER JOIN al filtrar
+        }
+
+        if (rutasFilter.length > 0) {
+            where['$ruta.nombre$'] = { [Op.in]: rutasFilter };
+            include[1].required = true; // Hacer INNER JOIN al filtrar
+        }
+
+        if (estatusFilter.length > 0) {
+            where.estado = { [Op.in]: estatusFilter };
+        }
+
+        if (fechaInicio || fechaFin) {
+            where.fechaEntrega = { 
+                [Op.between]: [
+                    new Date(fechaInicio ?? `${new Date().getFullYear()}-01-01`),
+                    new Date(fechaFin === "" ?  `${new Date().getFullYear()}-12-31` : fechaFin)
+                ]
+            };
+        }
+
+        // Consulta con paginación
+        const { count, rows } = await Pedido.findAndCountAll({
+            where,
+            include,
+            distinct: true, // Para conteo correcto con JOINs
+            order: [["id", "DESC"]],
+            limit: pageSize,
+            offset: offset
+        });
+
+        return sendSuccessResponse(res, 200, {
+            pedidos: rows,
+            total: count,
+        });
+
     } catch (e) {
-        logger.error(`Error fetching all orders: ${e.message}`);
+        logger.error(`Error fetching orders: ${e.message}`);
         return sendErrorResponse(res, 500, "Internal server error");
     }
 };
@@ -357,8 +409,7 @@ const getAllOrdersForExport = async (req, res) => {
     });
 
     return sendSuccessResponse(res, 200, pedidos);
-  } catch (e) {
-    console.log(e)
+  } catch (e) {    
     logger.error(`Error exporting orders: ${e.message}`);
     return sendErrorResponse(res, 500, "Error al exportar pedidos");
   }
