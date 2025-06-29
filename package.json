@@ -1,7 +1,7 @@
 {
-  "name": "batepacine",
+  "name": "batepaAPI",
   "version": "1.0.0",
-  "description": "Web app para la gestión de boletos para beneficiarios cuando Fundación Cinepolis nos de boletos",
+  "description": "API para la gestión de la aplicación de Batepa para la plataforma de pedidos",
   "main": "index.js",
   "scripts": {
     "start": "cross-env NODE_ENV=production node index.js",
@@ -19,8 +19,8 @@
     "express": "^4.21.2",
     "googleapis": "^150.0.1",
     "jsonwebtoken": "^9.0.2",
-    "jspdf": "^3.0.1",
     "mysql2": "^3.12.0",
+    "pdfmake": "^0.2.20",
     "resend": "^4.3.0",
     "sequelize": "^6.37.5",
     "winston": "^3.17.0"
