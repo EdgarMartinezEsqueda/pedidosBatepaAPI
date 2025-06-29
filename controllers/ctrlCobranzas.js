@@ -82,50 +82,44 @@ const generateCobranza = async (req, res) => {
         const anio = fechaActual.getFullYear();
         const nombreMes = `${mes} ${anio}`;
 
-        // // Subir el PDF a Drive
-        // const nombreArchivo = `cobranza_pedido#${pedido.id}_${pedido.ruta.nombre}_${new Date().toISOString().split("T")[0]}.pdf`;
-        // const urlDrive = await subirPDFaDrive(buffer, nombreArchivo, nombreRuta, nombreMes);
+        // Subir el PDF a Drive
+        const nombreArchivo = `cobranza_pedido#${pedido.id}_${pedido.ruta.nombre}_${new Date().toISOString().split("T")[0]}.pdf`;
+        const urlDrive = await subirPDFaDrive(buffer, nombreArchivo, nombreRuta, nombreMes);
 
-        // // Actualizar el pedido con la URL de la cobranza
-        // await pedido.update({
-        //     cobranzaGenerada: true,
-        //     urlCobranza: urlDrive
-        // }, { 
-        //     where: { id: pedidoId },
-        //     transaction 
-        // });
-        // await Cobranza.create({
-        //     idPedido: pedidoId,
-        //     urlArchivo: urlDrive,
-        //     generadoPor: usuarioId
-        // }, { transaction });
+        // Actualizar el pedido con la URL de la cobranza
+        await pedido.update({
+            cobranzaGenerada: true,
+            urlCobranza: urlDrive
+        }, { 
+            where: { id: pedidoId },
+            transaction 
+        });
+        await Cobranza.create({
+            idPedido: pedidoId,
+            urlArchivo: urlDrive,
+            generadoPor: usuarioId
+        }, { transaction });
 
-        // await transaction.commit();
-        // logger.info(`Cobranza generada correctamente: ${pedidoId}`);
+        await transaction.commit();
+        logger.info(`Cobranza generada correctamente: ${pedidoId}`);
 
-        // return sendSuccessResponse(res, 200, {
-        //     message: "Cobranza generada correctamente",
-        //     url: urlDrive.url
-        // });
-
-        // En generateCobranza, después de generar el buffer:
-        if (!buffer || buffer.length === 0) {
-            throw new Error("El PDF generado está vacío");
-        }
-         // Crear directorio si no existe
-         const cobranzasDir = path.join(__dirname, '..', 'cobranzas');
-         if (!fs.existsSync(cobranzasDir)) {
-             fs.mkdirSync(cobranzasDir, { recursive: true });
-         }
+        return sendSuccessResponse(res, 200, {
+            message: "Cobranza generada correctamente",
+            url: urlDrive.url
+        });
+        //  // Crear directorio si no existe
+        //  const cobranzasDir = path.join(__dirname, '..', 'cobranzas');
+        //  if (!fs.existsSync(cobranzasDir)) {
+        //      fs.mkdirSync(cobranzasDir, { recursive: true });
+        //  }
          
-         // Guardar PDF localmente
-         const fileName = `cobranza_pedido#${pedido.id}_${pedido.ruta.nombre}_${new Date().toISOString().split("T")[0]}.pdf`;
-         const filePath = path.join(cobranzasDir, fileName);
-         fs.writeFileSync(filePath, buffer);
+        //  // Guardar PDF localmente
+        //  const fileName = `cobranza_pedido#${pedido.id}_${pedido.ruta.nombre}_${new Date().toISOString().split("T")[0]}.pdf`;
+        //  const filePath = path.join(cobranzasDir, fileName);
+        //  fs.writeFileSync(filePath, buffer);
         
-         return sendSuccessResponse(res, 200, "Cobranza generada correctamente");
+        //  return sendSuccessResponse(res, 200, "Cobranza generada correctamente");
     } catch (error) {
-        console.log(error)
         await transaction.rollback();
         logger.error(`Error al generar la cobranza: ${error.message}`);
         return sendErrorResponse(res, 500, "Error al generar la cobranza");
