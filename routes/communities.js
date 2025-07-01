@@ -10,6 +10,7 @@ router
     .get("/:id", verify.verifyToken, ctrlCommunities.getCommunity)
     .patch("/:id", verify.verifyTokenAndLeadership, ctrlCommunities.updateCommunity)
     .delete("/:id", verify.verifyTokenAndLeadership, ctrlCommunities.deleteCommunity)
+    .get("/paginadas/todas", verify.verifyToken, ctrlCommunities.getAllCommunitiesPaginated)
     .get("/ruta/:ruta", verify.verifyToken, ctrlCommunities.getCommunitiesByRoute)
     .get("/ciudad/:municipio", verify.verifyToken, ctrlCommunities.getCommunitiesByCity);
 
