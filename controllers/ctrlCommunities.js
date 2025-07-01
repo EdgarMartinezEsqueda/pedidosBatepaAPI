@@ -46,7 +46,7 @@ const createCommunity = async (req, res) => {
     }
 };
 
-const getAllCommunities = async (req, res) => {
+const getAllCommunitiesPaginated = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const pageSize = parseInt(req.query.pageSize) || 10;
@@ -102,6 +102,28 @@ const getAllCommunities = async (req, res) => {
             communities: rows,
             total: count
         });
+
+    } catch (e) {
+        logger.error(`Error fetching communities: ${e.message}`);
+        return sendErrorResponse(res, 500, "Internal server error");
+    }
+};
+
+const getAllCommunities = async (req, res) => {
+    try {
+         const comunidades = await Comunidad.findAll({
+          attributes: ["id", "nombre", "jefa", "contacto", "direccion", "idRuta",
+            [Sequelize.col("ruta.nombre"), "nombreRuta"],
+            [Sequelize.col("municipio.nombre"), "nombreMunicipio"]
+          ],
+          include: [
+            { model: Ruta, as: "ruta", attributes: [] },
+            { model: Municipio, as: "municipio", attributes: [] }
+          ],
+          distinct: true
+        });
+        
+        return sendSuccessResponse(res, 200, comunidades);
 
     } catch (e) {
         logger.error(`Error fetching communities: ${e.message}`);
@@ -247,6 +269,7 @@ const deleteCommunity = async (req, res) => {
 
 module.exports= {
     createCommunity,
+    getAllCommunitiesPaginated,
     getAllCommunities,
     getCommunity,
     getCommunitiesByCity,
