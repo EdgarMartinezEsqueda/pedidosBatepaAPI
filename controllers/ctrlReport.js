@@ -25,15 +25,14 @@ const getResumen = async (req, res) => {
         const { view, year, month } = req.query;
         
         // Validar parámetros
-        if (!view || (view !== 'anual' && view !== 'mensual')) {
+        if (!view || (view !== 'anual' && view !== 'mensual')) 
             return sendErrorResponse(res, 400, "Parámetro 'view' inválido. Debe ser 'anual' o 'mensual'");
-        }
-        if (!year) {
+        
+        if (!year) 
             return sendErrorResponse(res, 400, "Parámetro 'year' requerido");
-        }
-        if (view === 'mensual' && !month) {
+        
+        if (view === 'mensual' && !month) 
             return sendErrorResponse(res, 400, "Parámetro 'month' requerido para vista mensual");
-        }
 
         // Calcular rangos de fechas según la vista
         let startDate, endDate;
@@ -192,9 +191,28 @@ const getResumen = async (req, res) => {
 
 const getReporteRutas = async (req, res) => {
     try {
-        // Obtener el inicio y fin del año actual
-        const startOfYear = new Date(new Date().getFullYear(), 0, 1); // 1 de Enero
-        const endOfYear = new Date(new Date().getFullYear(), 11, 31); // 31 de Diciembre
+        const { view, year, month } = req.query;
+        
+        // Validar parámetros
+        if (!view || (view !== 'anual' && view !== 'mensual')) 
+            return sendErrorResponse(res, 400, "Parámetro 'view' inválido. Debe ser 'anual' o 'mensual'");
+        
+        if (!year) 
+            return sendErrorResponse(res, 400, "Parámetro 'year' requerido");
+        
+        if (view === 'mensual' && !month) 
+            return sendErrorResponse(res, 400, "Parámetro 'month' requerido para vista mensual");
+
+        // Calcular rangos de fechas según la vista
+        let startDate, endDate;
+        if (view === 'anual') {
+            startDate = new Date(year, 0, 1); // 1 de Enero del año
+            endDate = new Date(year, 11, 31); // 31 de Diciembre del año
+        } else { // mensual
+            const monthIndex = parseInt(month) - 1; // Los meses en JS son 0-indexed
+            startDate = new Date(year, monthIndex, 1);
+            endDate = new Date(year, monthIndex + 1, 0); // Último día del mes
+        }
 
         // 1. Obtener todas las rutas con sus métricas
         const rutas = await Ruta.findAll({
@@ -220,7 +238,7 @@ const getReporteRutas = async (req, res) => {
                 }],
                 where: { 
                     fechaEntrega: { 
-                        [Op.between]: [startOfYear, endOfYear] 
+                        [Op.between]: [startDate, endDate] 
                     } 
                 },
             }],
@@ -290,9 +308,28 @@ const getReporteRutas = async (req, res) => {
 
 const getReporteTS = async (req, res) => {
     try {
-        // Obtener el inicio y fin del año actual
-        const startOfYear = new Date(new Date().getFullYear(), 0, 1); // 1 de Enero
-        const endOfYear = new Date(new Date().getFullYear(), 11, 31); // 31 de Diciembre
+        const { view, year, month } = req.query;
+        
+        // Validar parámetros
+        if (!view || (view !== 'anual' && view !== 'mensual')) 
+            return sendErrorResponse(res, 400, "Parámetro 'view' inválido. Debe ser 'anual' o 'mensual'");
+        
+        if (!year) 
+            return sendErrorResponse(res, 400, "Parámetro 'year' requerido");
+        
+        if (view === 'mensual' && !month) 
+            return sendErrorResponse(res, 400, "Parámetro 'month' requerido para vista mensual");
+
+        // Calcular rangos de fechas según la vista
+        let startDate, endDate;
+        if (view === 'anual') {
+            startDate = new Date(year, 0, 1); // 1 de Enero del año
+            endDate = new Date(year, 11, 31); // 31 de Diciembre del año
+        } else { // mensual
+            const monthIndex = parseInt(month) - 1; // Los meses en JS son 0-indexed
+            startDate = new Date(year, monthIndex, 1);
+            endDate = new Date(year, monthIndex + 1, 0); // Último día del mes
+        }
 
         // 1. Obtener métricas base con una sola consulta
         const trabajadores = await Usuario.findAll({
@@ -307,7 +344,7 @@ const getReporteTS = async (req, res) => {
                 }],
                 where: { 
                     fechaEntrega: { 
-                        [Op.between]: [startOfYear, endOfYear] 
+                        [Op.between]: [startDate, endDate] 
                     } 
                 },
                 required: true
@@ -332,13 +369,23 @@ const getReporteTS = async (req, res) => {
             Pedido.count({
                 where: { 
                     idTs: { [Op.in]: trabajadores.map(ts => ts.id) },
-                    estado: "pendiente"
+                    estado: "pendiente",
+                    fechaEntrega: { 
+                        [Op.between]: [startDate, endDate] 
+                    }
                 },
                 group: ["idTs"]
             }),
             Pedido.findAll({
                 as:"pedido",
-                where: { idTs: { [Op.in]: trabajadores.map(ts => ts.id) } },
+                where: { 
+                    idTs: { 
+                        [Op.in]: trabajadores.map(ts => ts.id) 
+                    },
+                    fechaEntrega: { 
+                        [Op.between]: [startDate, endDate] 
+                    } 
+                },
                 attributes: [
                     "id",
                     "fechaEntrega",
@@ -425,38 +472,28 @@ const getReporteTS = async (req, res) => {
 
 const getReporteDespensas = async (req, res) => {
     try {
-        const { año, mes, comunidadId, municipioId, rutaId, tsId, limit = 10 } = req.query;
+        const { view, year, month, comunidadId, municipioId, rutaId, tsId, limit = 10 } = req.query;
+        
+        // Validar parámetros
+        if (!view || (view !== 'anual' && view !== 'mensual')) 
+            return sendErrorResponse(res, 400, "Parámetro 'view' inválido. Debe ser 'anual' o 'mensual'");
+        
+        if (!year) 
+            return sendErrorResponse(res, 400, "Parámetro 'year' requerido");
+        
+        if (view === 'mensual' && !month) 
+            return sendErrorResponse(res, 400, "Parámetro 'month' requerido para vista mensual");
 
-        // Construir cláusulas WHERE para los filtros
-        const whereClause = {};
-        const fechaEntrega = {};
-
-        // Manejar filtros de fecha
-        if (año) {
-            const start = new Date(año, 0, 1);
-            const end = new Date(año, 11, 31);
-            fechaEntrega[Sequelize.Op.between] = [start, end];
+        // Calcular rangos de fechas según la vista
+        let startDate, endDate;
+        if (view === 'anual') {
+            startDate = new Date(year, 0, 1); // 1 de Enero del año
+            endDate = new Date(year, 11, 31); // 31 de Diciembre del año
+        } else { // mensual
+            const monthIndex = parseInt(month) - 1; // Los meses en JS son 0-indexed
+            startDate = new Date(year, monthIndex, 1);
+            endDate = new Date(year, monthIndex + 1, 0); // Último día del mes
         }
-
-        if (mes && año) {
-            const start = new Date(año, mes - 1, 1);
-            const end = new Date(año, mes, 0);
-            fechaEntrega[Sequelize.Op.between] = [start, end];
-        }
-
-        if(!año){
-            const startOfYear = new Date(new Date().getFullYear(), 0, 1); // 1 de Enero
-            const endOfYear = new Date(new Date().getFullYear(), 11, 31); // 31 de Diciembre
-            fechaEntrega[Sequelize.Op.between] = [startOfYear, endOfYear];
-        }
-
-        if (Object.keys(fechaEntrega).length > 0) {
-            whereClause.fechaEntrega = fechaEntrega;
-        }
-
-        // Filtros directos
-        if (rutaId) whereClause.idRuta = rutaId;
-        if (tsId) whereClause.idTs = tsId;
 
         // Construir includes dinámicos para comunidad y municipio
         const pedidoComunidadInclude = {
@@ -500,7 +537,11 @@ const getReporteDespensas = async (req, res) => {
 
         // Obtener pedidos con relaciones
         const pedidos = await Pedido.findAll({
-            where: whereClause,
+            where: {
+                fechaEntrega: {
+                    [Op.between]: [startDate, endDate]
+                },
+            },
             include: [
                 pedidoComunidadInclude,
                 { model: Ruta, as: "ruta", attributes: ["id", "nombre"] },
@@ -641,11 +682,28 @@ const getReporteDespensas = async (req, res) => {
 
 const getReporteComunidades = async (req, res) => {
     try {
-        // Obtener el inicio y fin del año actual
-        const startOfYear = new Date(new Date().getFullYear(), 0, 1); // 1 de Enero
-        const endOfYear = new Date(new Date().getFullYear(), 11, 31); // 31 de Diciembre
+        const { view, year, month, comunidadId } = req.query;
+        
+        // Validar parámetros
+        if (!view || (view !== 'anual' && view !== 'mensual')) 
+            return sendErrorResponse(res, 400, "Parámetro 'view' inválido. Debe ser 'anual' o 'mensual'");
+        
+        if (!year) 
+            return sendErrorResponse(res, 400, "Parámetro 'year' requerido");
+        
+        if (view === 'mensual' && !month) 
+            return sendErrorResponse(res, 400, "Parámetro 'month' requerido para vista mensual");
 
-        const { comunidadId } = req.query;
+        // Calcular rangos de fechas según la vista
+        let startDate, endDate;
+        if (view === 'anual') {
+            startDate = new Date(year, 0, 1); // 1 de Enero del año
+            endDate = new Date(year, 11, 31); // 31 de Diciembre del año
+        } else { // mensual
+            const monthIndex = parseInt(month) - 1; // Los meses en JS son 0-indexed
+            startDate = new Date(year, monthIndex, 1);
+            endDate = new Date(year, monthIndex + 1, 0); // Último día del mes
+        }
 
         // 1. Datos principales de todas las comunidades
         const comunidades = await Comunidad.findAll({
@@ -682,7 +740,7 @@ const getReporteComunidades = async (req, res) => {
                         attributes: [],
                         where: {  // <- Filtro por año
                             fechaEntrega: { 
-                                [Op.between]: [startOfYear, endOfYear] 
+                                [Op.between]: [startDate, endDate] 
                             }
                         }
                     }]
@@ -744,7 +802,12 @@ const getReporteComunidades = async (req, res) => {
                     attributes: [],
                     required: true
                 }],
-                where: { idComunidad: comunidadId },
+                where: { 
+                    idComunidad: comunidadId,
+                    fechaEntrega: { 
+                        [Op.between]: [startDate, endDate] // Filtro por año
+                    }
+                },
                 group: [Sequelize.fn("date_trunc", "month", Sequelize.col("pedido.fechaEntrega"))],
                 order: [[Sequelize.literal("mes"), "ASC"]],
                 raw: true
@@ -786,14 +849,28 @@ const getReporteComunidades = async (req, res) => {
 
 const getReporteApadrinadas = async (req, res) => {
     try {
-        const { limit = 10 } = req.query;
-        const doceMesesAtras = new Date();
-        doceMesesAtras.setMonth(doceMesesAtras.getMonth() - 11);
+        const { view, year, month, limit = 5 } = req.query;
+        
+        // Validar parámetros
+        if (!view || (view !== 'anual' && view !== 'mensual')) 
+            return sendErrorResponse(res, 400, "Parámetro 'view' inválido. Debe ser 'anual' o 'mensual'");
+        
+        if (!year) 
+            return sendErrorResponse(res, 400, "Parámetro 'year' requerido");
+        
+        if (view === 'mensual' && !month) 
+            return sendErrorResponse(res, 400, "Parámetro 'month' requerido para vista mensual");
 
-        // 1. Datos mensuales últimos 12 meses (optimizado con filtro de fecha)
-        // Obtener el inicio y fin del año actual
-        const startOfYear = new Date(new Date().getFullYear(), 0, 1); // 1ero de enero
-        const endOfYear = new Date(new Date().getFullYear(), 11, 31); // 31 de diciembre
+        // Calcular rangos de fechas según la vista
+        let startDate, endDate;
+        if (view === 'anual') {
+            startDate = new Date(year, 0, 1); // 1 de Enero del año
+            endDate = new Date(year, 11, 31); // 31 de Diciembre del año
+        } else { // mensual
+            const monthIndex = parseInt(month) - 1; // Los meses en JS son 0-indexed
+            startDate = new Date(year, monthIndex, 1);
+            endDate = new Date(year, monthIndex + 1, 0); // Último día del mes
+        }
 
         const monthlyData = await PedidoComunidad.findAll({
             attributes: [
@@ -809,7 +886,7 @@ const getReporteApadrinadas = async (req, res) => {
                 attributes: [],
                 where: { 
                     fechaEntrega: { 
-                        [Op.between]: [startOfYear, endOfYear] // Filtra solo el año actual
+                        [Op.between]: [startDate, endDate] // Filtra solo el año actual
                     } 
                 },
                 required: true
@@ -818,26 +895,29 @@ const getReporteApadrinadas = async (req, res) => {
             raw: true
         });
         
+        const start = new Date(startDate).toISOString().slice(0, 19).replace('T', ' ');
+        const end = new Date(endDate).toISOString().slice(0, 19).replace('T', ' ');
+
         // 2. Top TS y Comunidades en una sola consulta usando Promise.all
         const [topTS, topComunidades] = await Promise.all([
             Usuario.findAll({
                 attributes: [
                     "id",
                     "username",
-                    [Sequelize.literal("(SELECT SUM(despensasApadrinadas) FROM pedidoComunidad JOIN pedidos ON pedidoComunidad.idPedido = pedidos.id WHERE pedidos.idTs = usuarios.id)"), "total"]
+                    [Sequelize.literal(`( SELECT SUM(despensasApadrinadas) FROM pedidoComunidad JOIN pedidos ON pedidoComunidad.idPedido = pedidos.id WHERE pedidos.idTs = usuarios.id AND pedidos.fechaEntrega BETWEEN '${start}' AND '${end}')`), "total"]
                 ],
                 order: [[Sequelize.literal("total"), "DESC"]],
-                limit: 5,
+                limit: parseInt(limit),
                 raw: true
             }),
             Comunidad.findAll({
                 attributes: [
                     "id",
                     "nombre",
-                    [Sequelize.literal("(SELECT SUM(despensasApadrinadas) FROM pedidoComunidad WHERE pedidoComunidad.idComunidad = comunidades.id)"), "total"]
+                    [Sequelize.literal(`(SELECT SUM(despensasApadrinadas) FROM pedidoComunidad JOIN pedidos ON pedidoComunidad.idPedido = pedidos.id WHERE pedidoComunidad.idComunidad = comunidades.id AND pedidos.fechaEntrega BETWEEN '${start}' AND '${end}')`), "total"]
                 ],
                 order: [[Sequelize.literal("total"), "DESC"]],
-                limit: 5,
+                limit: parseInt(limit),
                 raw: true
             })
         ]);
@@ -863,6 +943,11 @@ const getReporteApadrinadas = async (req, res) => {
                 as: "ruta",
                 attributes: ["nombre"]
             }],
+            where: {
+                fechaEntrega: {
+                    [Op.between]: [startDate, endDate] // Filtra solo el año actual
+                }
+            },
             order: [["fechaEntrega", "DESC"]],
             limit: parseInt(limit)
         });
@@ -911,29 +996,28 @@ const getReporteApadrinadas = async (req, res) => {
 
 const getReporteEconomico = async (req, res) => {
     try {
-        const { año, mes, comunidadId, municipioId, rutaId, tsId } = req.query;
+        const { view, year, month, comunidadId, municipioId, rutaId, tsId } = req.query;
+        
+        // Validar parámetros
+        if (!view || (view !== 'anual' && view !== 'mensual')) 
+            return sendErrorResponse(res, 400, "Parámetro 'view' inválido. Debe ser 'anual' o 'mensual'");
+        
+        if (!year) 
+            return sendErrorResponse(res, 400, "Parámetro 'year' requerido");
+        
+        if (view === 'mensual' && !month) 
+            return sendErrorResponse(res, 400, "Parámetro 'month' requerido para vista mensual");
 
-        // Configurar filtros de fecha
-        const wherePedido = {};
-        if (año) {
-            const start = new Date(año, 0, 1);
-            const end = new Date(año, 11, 31);
-            wherePedido.fechaEntrega = { [Op.between]: [start, end] };
+        // Calcular rangos de fechas según la vista
+        let startDate, endDate;
+        if (view === 'anual') {
+            startDate = new Date(year, 0, 1); // 1 de Enero del año
+            endDate = new Date(year, 11, 31); // 31 de Diciembre del año
+        } else { // mensual
+            const monthIndex = parseInt(month) - 1; // Los meses en JS son 0-indexed
+            startDate = new Date(year, monthIndex, 1);
+            endDate = new Date(year, monthIndex + 1, 0); // Último día del mes
         }
-        if (mes && año) {
-            const start = new Date(año, mes - 1, 1);
-            const end = new Date(año, mes, 0);
-            wherePedido.fechaEntrega = { [Op.between]: [start, end] };
-        }
-        if (!año) {
-            const startOfYear = new Date(new Date().getFullYear(), 0, 1);
-            const endOfYear = new Date(new Date().getFullYear(), 11, 31);
-            wherePedido.fechaEntrega = { [Op.between]: [startOfYear, endOfYear] };
-        }
-
-        // Filtros adicionales
-        if (rutaId) wherePedido.idRuta = rutaId;
-        if (tsId) wherePedido.idTs = tsId;
 
         // Obtener todos los pedidosComunidad con relaciones necesarias
         const pedidoComunidades = await PedidoComunidad.findAll({
@@ -941,7 +1025,11 @@ const getReporteEconomico = async (req, res) => {
                 {
                     model: Pedido,
                     as: "pedido",
-                    where: wherePedido,
+                    where: {
+                        fechaEntrega: {
+                            [Op.between]: [startDate, endDate] // Filtra solo el año actual
+                        }
+                    },
                     required: true,
                     include: [
                         { model: Ruta, as: "ruta", attributes: ["id", "nombre"] },
