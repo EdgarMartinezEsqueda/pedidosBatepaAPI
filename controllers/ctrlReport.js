@@ -916,6 +916,9 @@ const getReporteApadrinadas = async (req, res) => {
                     "nombre",
                     [Sequelize.literal(`(SELECT SUM(despensasApadrinadas) FROM pedidoComunidad JOIN pedidos ON pedidoComunidad.idPedido = pedidos.id WHERE pedidoComunidad.idComunidad = comunidades.id AND pedidos.fechaEntrega BETWEEN '${start}' AND '${end}')`), "total"]
                 ],
+                include: [
+                    { model: Municipio, as: "municipio", attributes: ["nombre"] }
+                ],
                 order: [[Sequelize.literal("total"), "DESC"]],
                 limit: parseInt(limit),
                 raw: true
