@@ -22,10 +22,31 @@ const sendSuccessResponse = (res, statusCode, data) => {
 
 const getResumen = async (req, res) => {
     try {
-        // A. Obtener TODOS los pedidos con sus comunidades (últimos 12 meses)
-        const startOfYear = new Date(new Date().getFullYear(), 0, 1); // 1 de Enero
-        const endOfYear = new Date(new Date().getFullYear(), 11, 31); // 31 de Diciembre
+        const { view, year, month } = req.query;
+        
+        // Validar parámetros
+        if (!view || (view !== 'anual' && view !== 'mensual')) {
+            return sendErrorResponse(res, 400, "Parámetro 'view' inválido. Debe ser 'anual' o 'mensual'");
+        }
+        if (!year) {
+            return sendErrorResponse(res, 400, "Parámetro 'year' requerido");
+        }
+        if (view === 'mensual' && !month) {
+            return sendErrorResponse(res, 400, "Parámetro 'month' requerido para vista mensual");
+        }
 
+        // Calcular rangos de fechas según la vista
+        let startDate, endDate;
+        if (view === 'anual') {
+            startDate = new Date(year, 0, 1); // 1 de Enero del año
+            endDate = new Date(year, 11, 31); // 31 de Diciembre del año
+        } else { // mensual
+            const monthIndex = parseInt(month) - 1; // Los meses en JS son 0-indexed
+            startDate = new Date(year, monthIndex, 1);
+            endDate = new Date(year, monthIndex + 1, 0); // Último día del mes
+        }
+
+        // A. Obtener pedidos según el rango de fechas
         const pedidosCompletos = await Pedido.findAll({
             include: [
                 { model: Usuario, attributes: ["id", "username"], as: "usuario" },
@@ -42,13 +63,13 @@ const getResumen = async (req, res) => {
             ],
             where: { 
                 fechaEntrega: { 
-                    [Op.between]: [startOfYear, endOfYear] 
+                    [Op.between]: [startDate, endDate] 
                 } 
             }
         });
         
         // B. Procesar data
-        const procesarData = (pedidos) => {
+        const procesarData = (pedidos, viewType) => {
             let despensasPorMes = {};
             let tiposDespensas = { costo: 0, medioCosto: 0, sinCosto: 0, apadrinadas: 0 };
             let trabajadores = {};
@@ -57,48 +78,42 @@ const getResumen = async (req, res) => {
             let devolucionesRutas = {};
 
             pedidos.forEach(pedido => {
-                // Procesar por mes
-                const mes = new Date( pedido.fechaEntrega ).toISOString().slice(0, 7); // Formato YYYY-MM
-                if (!despensasPorMes[mes]) despensasPorMes[mes] = { costo: 0, medioCosto: 0, sinCosto: 0, apadrinadas: 0 };
+                // Determinar clave según vista
+                const clave = viewType === 'anual' 
+                    ? new Date(pedido.fechaEntrega).toISOString().slice(0, 7) // YYYY-MM
+                    : 'current'; // Única clave para vista mensual
+
+                if (!despensasPorMes[clave]) {
+                    despensasPorMes[clave] = { costo: 0, medioCosto: 0, sinCosto: 0, apadrinadas: 0 };
+                }
                 
-                // Sumar tipos de despensas (global y por mes)
                 pedido.pedidoComunidad.forEach(pc => {
+                    // Sumar tipos de despensas
                     tiposDespensas.costo += pc.despensasCosto;
                     tiposDespensas.medioCosto += pc.despensasMedioCosto;
                     tiposDespensas.sinCosto += pc.despensasSinCosto;
                     tiposDespensas.apadrinadas += pc.despensasApadrinadas;
 
-                    despensasPorMes[mes].costo += pc.despensasCosto;
-                    despensasPorMes[mes].medioCosto += pc.despensasMedioCosto;
-                    despensasPorMes[mes].sinCosto += pc.despensasSinCosto;
-                    despensasPorMes[mes].apadrinadas += pc.despensasApadrinadas;
+                    // Sumar por mes/clave
+                    despensasPorMes[clave].costo += pc.despensasCosto;
+                    despensasPorMes[clave].medioCosto += pc.despensasMedioCosto;
+                    despensasPorMes[clave].sinCosto += pc.despensasSinCosto;
+                    despensasPorMes[clave].apadrinadas += pc.despensasApadrinadas;
 
                     // Top comunidades
                     const comunidadNombre = pc.comunidad.nombre;
-                    comunidades[comunidadNombre] = (comunidades[comunidadNombre] || 0) + pc.despensasCosto + pc.despensasMedioCosto + pc.despensasSinCosto;
+                    comunidades[comunidadNombre] = (comunidades[comunidadNombre] || 0) + 
+                        pc.despensasCosto + pc.despensasMedioCosto + pc.despensasSinCosto;
                 });
 
-                // Top trabajadores, esto saca el total de pedidos hechos por cada trabajador
-                // if (pedido.usuario) {
-                //     const tsId = pedido.usuario.id;
-                //     trabajadores[tsId] = {
-                //         username: pedido.usuario.username,
-                //         total: (trabajadores[tsId]?.total || 0) + 1 
-                //     };
-                // }
-
-                // Top trabajadores, esto saca el total de despensas entregadas por cada trabajador
+                // Top trabajadores (por despensas)
                 if (pedido.usuario) {
                     const tsId = pedido.usuario.id;
                     let totalDespensas = 0;
-                
                     pedido.pedidoComunidad.forEach(pc => {
-                        totalDespensas += pc.despensasCosto 
-                                          + pc.despensasMedioCosto 
-                                          + pc.despensasSinCosto 
-                                          + pc.despensasApadrinadas;
+                        totalDespensas += pc.despensasCosto + pc.despensasMedioCosto + 
+                                         pc.despensasSinCosto + pc.despensasApadrinadas;
                     });
-                
                     trabajadores[tsId] = {
                         username: pedido.usuario.username,
                         total: (trabajadores[tsId]?.total || 0) + totalDespensas
@@ -108,27 +123,27 @@ const getResumen = async (req, res) => {
                 // Top rutas y devoluciones
                 if (pedido.ruta) {
                     const rutaNombre = pedido.ruta.nombre;
-                    
-                    // Función reutilizable para sumar despensas
-                    const sumarDespensas = (pc) => {
-                        return pc.despensasCosto + pc.despensasMedioCosto 
-                            + pc.despensasSinCosto + pc.despensasApadrinadas;
-                    };
-
-                    // Sumar despensas para esta ruta
                     const totalDespensas = pedido.pedidoComunidad
-                        .reduce((total, pc) => total + sumarDespensas(pc), 0);
-
-                    rutas[rutaNombre] = (rutas[rutaNombre] || 0) + totalDespensas;
+                        .reduce((total, pc) => total + 
+                            pc.despensasCosto + pc.despensasMedioCosto + 
+                            pc.despensasSinCosto + pc.despensasApadrinadas, 0);
                     
-                    // Devoluciones se mantiene igual
+                    rutas[rutaNombre] = (rutas[rutaNombre] || 0) + totalDespensas;
                     devolucionesRutas[rutaNombre] = (devolucionesRutas[rutaNombre] || 0) + (pedido.devoluciones || 0);
                 }
             });
             
-            // Ordenar y formatear resultados
+            // Formatear despensasPorMes según vista
+            let formattedDespensas = [];
+            if (viewType === 'anual') {
+                formattedDespensas = Object.entries(despensasPorMes)
+                    .map(([mes, valores]) => ({ mes, ...valores }));
+            } else {
+                formattedDespensas = [{ mes: `${year}-${month.padStart(2, '0')}`, ...despensasPorMes['current'] }];
+            }
+
             return {
-                despensasPorMes: Object.entries(despensasPorMes).map(([mes, valores]) => ({ mes, ...valores })),
+                despensasPorMes: formattedDespensas,
                 tiposDespensas,
                 topTrabajadores: Object.values(trabajadores).sort((a, b) => b.total - a.total).slice(0, 5),
                 topComunidades: Object.entries(comunidades).sort((a, b) => b[1] - a[1]).slice(0, 5),
@@ -137,50 +152,38 @@ const getResumen = async (req, res) => {
             };
         };
 
-        // C. Obtener calendario (segunda consulta específica)
-        const mesActualInicio = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-        const mesActualFin = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
-
-        const calendario = await Pedido.findAll({
+        // C. Calendario (solo para vista mensual)
+        let calendario = [];
+        calendario = await Pedido.findAll({
             attributes: ["fechaEntrega", "estado"],
             include: [
-                {
-                    model: Ruta,
-                    attributes: ["nombre"],
-                    as: "ruta"
-                },
-                {
-                    model: PedidoComunidad,
-                    as: "pedidoComunidad",
-                    attributes: ["despensasCosto", "despensasMedioCosto", "despensasSinCosto", "despensasApadrinadas"]
-                }
+                { model: Ruta, attributes: ["nombre"], as: "ruta" },
+                { model: PedidoComunidad, as: "pedidoComunidad", attributes: [
+                    "despensasCosto", "despensasMedioCosto", 
+                    "despensasSinCosto", "despensasApadrinadas"
+                ]}
             ],
-            where: { fechaEntrega: { [Op.between]: [mesActualInicio, mesActualFin] } }
+            where: { fechaEntrega: { [Op.between]: [startDate, endDate] } }
         });
 
         // D. Combinar resultados
         const resultadoFinal = {
-            ...procesarData(pedidosCompletos),
+            ...procesarData(pedidosCompletos, view),
             calendario: calendario.map(p => {
-                // Calcular total de despensas por pedido
-                const totalDespensas = p.pedidoComunidad
-                    ?.reduce((total, pc) => total + 
-                        pc.despensasCosto + 
-                        pc.despensasMedioCosto + 
-                        pc.despensasSinCosto + 
-                        pc.despensasApadrinadas, 0) || 0;
-
+                const totalDespensas = p.pedidoComunidad?.reduce((total, pc) => 
+                    total + pc.despensasCosto + pc.despensasMedioCosto + 
+                    pc.despensasSinCosto + pc.despensasApadrinadas, 0) || 0;
+                
                 return {
                     fecha: p.fechaEntrega,
                     estado: p.estado,
                     ruta: p.ruta?.nombre || "Sin ruta",
-                    totalDespensas: totalDespensas  // Nuevo campo
+                    totalDespensas
                 };
             })
         };
 
         sendSuccessResponse(res, 200, resultadoFinal);
-
     } catch (error) {
         logger.error("Error en getResumen: ", error);
         sendErrorResponse(res, 500, error.message);
