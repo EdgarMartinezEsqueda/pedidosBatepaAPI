@@ -59,7 +59,8 @@ const getAllTickets = async (req, res) => {
                 model: Usuario,
                 as: "usuario",
                 attributes: ["id", "username", "email"]
-            }]
+            }],
+            order: [["createdAt", "DESC"]]
         });
 
         return sendSuccessResponse(res, 200, tickets);
