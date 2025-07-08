@@ -10,6 +10,7 @@ router
     .patch("/:id", verify.verifyTokenAndAuthorization, controllerUsuarios.updateUser )
     .delete("/:id", verify.verifyTokenAndAdmin, controllerUsuarios.deleteUser )
     .patch("/:id/verificar", verify.verifyTokenAndAdmin, controllerUsuarios.verifyUser )
-    .get("/todos/pendientes", verify.verifyTokenAndAdmin, controllerUsuarios.getPendingUsers);
+    .get("/todos/pendientes", verify.verifyTokenAndAdmin, controllerUsuarios.getPendingUsers)
+    .get("/todos/conPedidos", verify.verifyToken, controllerUsuarios.getUsersWithOrders);
 
 module.exports = router;

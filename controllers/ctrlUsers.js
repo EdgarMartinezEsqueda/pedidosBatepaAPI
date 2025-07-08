@@ -1,4 +1,4 @@
-const { Usuario } = require("../models/index");
+const { Usuario, Pedido } = require("../models/index");
 const logger = require("../utils/logger");
 const { sendVerificationEmail } = require("../utils/email/emailService");
 
@@ -98,7 +98,7 @@ const deleteUser = async (req, res) => {
         }
 
         // Verificar si es de Dirección
-        if (user.rol === 'Direccion') {
+        if (user.rol === "Direccion") {
             logger.warn(`Intento de borrar usuario de Dirección con ID: ${id}`);
             return sendErrorResponse(res, 403, "No se puede eliminar usuarios de Dirección");
         }
@@ -158,6 +158,32 @@ const getUser = async (req, res) => {
         return sendSuccessResponse(res, 200, others);
     } catch (e) {
         logger.error(`Error fetching user: ${e.message}`); // Log error
+        return sendErrorResponse(res, 500, "Internal server error");
+    }
+};
+// Get a specific user
+
+const getUsersWithOrders = async (req, res) => {
+    try {
+        const usuariosConPedidos = await Usuario.findAll({
+            include: [{
+                model: Pedido,
+                as: "pedido",
+                attributes: [],
+                required: true // hace INNER JOIN, así solo trae usuarios que tengan pedidos
+            }],
+            attributes: ["id", "username"]
+            });
+
+        if (!usuariosConPedidos || usuariosConPedidos.length === 0) {
+            logger.warn(`No hay usuarios que hayan hecho pedidos`); // Log warning
+            return sendErrorResponse(res, 404, "No hay usuarios que hayan hecho pedidos");
+        }
+
+        logger.info(`Users fetched successfully for order filter`); // Log success
+        return sendSuccessResponse(res, 200, usuariosConPedidos);
+    } catch (e) {
+        logger.error(`Error fetching users for order filter: ${e.message}`); // Log error
         return sendErrorResponse(res, 500, "Internal server error");
     }
 };
@@ -238,5 +264,6 @@ module.exports = {
     getUser,
     getAllUsers,
     verifyUser,
-    getPendingUsers
+    getPendingUsers,
+    getUsersWithOrders
 };
