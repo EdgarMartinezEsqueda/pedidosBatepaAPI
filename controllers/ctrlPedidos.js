@@ -415,6 +415,27 @@ const getAllOrdersForExport = async (req, res) => {
   }
 };
 
+// Actualizar el estado de un pedido a "pendiente"
+const updateOrderStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const pedido = await Pedido.findByPk(id);
+
+        if (!pedido) {
+            return sendErrorResponse(res, 404, "Pedido no encontrado");
+        }
+
+        // Actualizar el estado del pedido a 'pendiente'
+        pedido.estado = "pendiente";
+        await pedido.save();
+
+        return sendSuccessResponse(res, 200, "Estado del pedido actualizado a 'pendiente'");
+    } catch (e) {
+        logger.error(`Error al actualizar el estado del pedido: ${e.message}`);
+        return sendErrorResponse(res, 500, "Error interno del servidor");
+    }
+};
+
 module.exports = {
     createOrder,
     getAllOrders,
@@ -424,4 +445,5 @@ module.exports = {
     getAllOrdersForExport,
     updateOrder,
     deleteOrder,
+    updateOrderStatus
 };

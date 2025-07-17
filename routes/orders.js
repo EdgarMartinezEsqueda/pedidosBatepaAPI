@@ -11,6 +11,7 @@ router
     .get("/ruta/:id", verify.verifyToken, ctrlPedidos.getOrdersByRoute)
     .get("/ts/:id", verify.verifyToken, ctrlPedidos.getOrdersByTs)
     .post("/export", verify.verifyToken, ctrlPedidos.getAllOrdersForExport)
+    .patch("/rollback/:id", verify.verifyTokenAndAdmin, ctrlPedidos.updateOrderStatus)
     .patch("/:id", verify.verifyTokenAndRole, ctrlPedidos.updateOrder)
     .delete("/:id", verify.verifyTokenAndRole, ctrlPedidos.deleteOrder); 
 
