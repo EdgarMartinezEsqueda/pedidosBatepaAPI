@@ -336,7 +336,7 @@ const getOrdersByTs = async (req, res) => {
             order: [["id", "DESC" ]], // Obtener los pedidos mas recientes al inicio
             where: { idTs : id }
         });
-        logger.info(`Fetched ${orders.length} orders`); // Log success
+        logger.info(`Fetched ${orders.length} orders for 'My Orders' view`); // Log success
         return sendSuccessResponse(res, 200, orders);
     } catch (e) {
         logger.error(`Error fetching all orders for Route: ${req.params.ruta}\n${e.message}`); // Log error
